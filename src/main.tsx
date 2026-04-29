@@ -10,6 +10,8 @@ import { ContinuousTrackingInfoPage } from './Pages/gameinfo/continuous_tracking
 import { DualTaskInfoPage } from './Pages/gameinfo/dualtask_info/dualTask_info'
 
 import MovingTargetGamePage from './Pages/gamepages/movingtarget/movingTarget'
+import DualTaskGamePage from './Pages/gamepages/dualtask/dualtask'
+import DualTaskResultPage from './Pages/gamepages/dualtask/dualtaskResult'
 import ContinuousTrackingGamePage from './Pages/gamepages/continuous_tracking/ContinuousTrackingGame'
 import './index.css'
 
@@ -26,7 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/gameplay/continuous-tracking" element={<ContinuousTrackingGamePage />} />
 
         <Route path="/gameinfo/dualtask" element={<DualTaskInfoPage />} />
-
+        <Route path="/gameplay/dualtask/result" element={<DualTaskResultPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

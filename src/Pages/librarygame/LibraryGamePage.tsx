@@ -17,16 +17,6 @@ const games = [
     isAvailable: true,
   },
   {
-    id: 'continuous-tracking',
-    title: 'การติดตามเป้าหมายต่อเนื่อง',
-    description:
-      'ทดสอบการควบคุมเมาส์และการประสานงานระหว่างสายตากับมือ โดยติดตามเป้าหมายที่เคลื่อนที่ต่อเนื่อง',
-    icon: '🎯',
-    iconClassName: 'bg-sp-info-soft text-sp-info',
-    path: '/gameinfo/continuous-tracking',
-    isAvailable: true,
-  },
-  {
     id: 'number-search',
     title: 'ตามหาตัวเลข',
     description:
