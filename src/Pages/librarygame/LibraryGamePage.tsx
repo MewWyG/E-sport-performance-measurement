@@ -20,7 +20,7 @@ const games = [
     id: 'number-search',
     title: 'ตามหาตัวเลข',
     description:
-      'ททดสอบความเร็วในการมองหาเป้าหมายและประมวลผลในการทำตามลำดับอย่างถูกต้อง',
+      'ทดสอบความเร็วในการมองหาเป้าหมายและประมวลผลในการทำตามลำดับอย่างถูกต้อง',
     icon: '🔢',
     iconClassName: 'bg-sp-info-soft text-sp-info',
     path: '',
@@ -76,7 +76,9 @@ export function LibraryGamePage() {
                 title={game.title}
                 description={game.description}
                 onSelect={() => {
-                  if (!game.isAvailable) return
+
+                  if (!game.isAvailable || !game.path) return
+
                   navigate(game.path)
                 }}
               />
