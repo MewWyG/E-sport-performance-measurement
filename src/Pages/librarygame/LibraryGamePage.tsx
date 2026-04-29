@@ -56,6 +56,16 @@ const games = [
     path: '/gameinfo/speedlogic',
     isAvailable: false,
   },
+  {
+  id: 'prediction-intercept',
+  title: 'การคาดการณ์ตำแหน่งเป้าหมาย',
+  description:
+    'ทดสอบความสามารถในการคาดการณ์การเคลื่อนที่ล่วงหน้า โดยคลิกตำแหน่งที่คิดว่าเป้าหมายจะไปถึงหลังจากเป้าหมายหายไป',
+  icon: '🧠',
+  iconClassName: 'bg-sp-warning-soft text-sp-warning',
+  path: '/gameinfo/prediction-intercept',
+  isAvailable: true,
+  },
 ]
 
 export function LibraryGamePage() {
