@@ -1,14 +1,102 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=Kanit:wght@300;400;600;700;800&display=swap');
+@import "tailwindcss";
+
+/* =========================================================
+   SkillPulse Theme Tokens
+   Tailwind v4 @theme tokens
+   ใช้เพื่อสร้าง utility classes เช่น:
+   bg-sp-bg, text-sp-text, rounded-sp-card, shadow-sp-brand
+   ========================================================= */
+
+@theme {
+  /* Font */
+  --font-sans: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+
+  /* Container */
+  --container-sp-page: 80rem;
+
+  /* Background */
+  --color-sp-bg: #020617;
+  --color-sp-bg-soft: #0f172a;
+
+  /* Surface / Glass */
+  --color-sp-surface: #1e293b;
+  --color-sp-surface-strong: #334155;
+  --color-sp-surface-muted: #0f172a;
+  --color-sp-glass: rgb(30 41 59 / 0.7);
+
+  /* Text */
+  --color-sp-text: #f8fafc;
+  --color-sp-text-muted: #94a3b8;
+  --color-sp-text-subtle: #64748b;
+
+  /* Border */
+  --color-sp-border: rgb(255 255 255 / 0.1);
+  --color-sp-border-strong: #334155;
+
+  /* Brand */
+  --color-sp-primary: #4f46e5;
+  --color-sp-primary-hover: #6366f1;
+  --color-sp-secondary: #22d3ee;
+
+  /* Gradient */
+  --color-sp-gradient-start: #818cf8;
+  --color-sp-gradient-end: #22d3ee;
+
+  /* Semantic Accent */
+  --color-sp-success: #34d399;
+  --color-sp-success-soft: rgb(16 185 129 / 0.2);
+
+  --color-sp-info: #60a5fa;
+  --color-sp-info-soft: rgb(59 130 246 / 0.2);
+
+  --color-sp-pink: #f472b6;
+  --color-sp-pink-soft: rgb(236 72 153 / 0.2);
+
+  --color-sp-warning: #fbbf24;
+  --color-sp-warning-soft: rgb(245 158 11 / 0.2);
+
+  --color-sp-danger: #fb7185;
+  --color-sp-danger-soft: rgb(244 63 94 / 0.2);
+
+  /* Radius */
+  --radius-sp-sm: 0.5rem;
+  --radius-sp-md: 0.75rem;
+  --radius-sp-lg: 1rem;
+  --radius-sp-xl: 1.25rem;
+  --radius-sp-card: 1.5rem;
+  --radius-sp-pill: 9999px;
+
+  /* Shadow */
+  --shadow-sp-brand-sm: 0 10px 25px -5px rgb(99 102 241 / 0.2);
+  --shadow-sp-brand: 0 10px 25px -5px rgb(99 102 241 / 0.4);
+  --shadow-sp-brand-lg: 0 20px 35px -10px rgb(99 102 241 / 0.4);
+
+  /* Animation */
+  --animate-sp-fade-in: sp-fade-in 0.4s ease-out forwards;
+
+  @keyframes sp-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* =========================================================
+   Base
+   ========================================================= */
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
 }
 
@@ -17,8 +105,14 @@ html {
 }
 
 body {
+  margin: 0;
   min-height: 100vh;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f8fafc;
-  color: #111827;
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+  background: var(--color-sp-bg);
+  color: var(--color-sp-text);
+}
+
+button {
+  font-family: inherit;
 }
