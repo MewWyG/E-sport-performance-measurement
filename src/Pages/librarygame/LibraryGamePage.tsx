@@ -13,6 +13,16 @@ const games = [
     icon: <TargetIcon className="h-7 w-7" />,
     iconClassName: 'bg-sp-danger-soft text-sp-danger',
   },
+  {
+    id: 'number-search',
+    title: 'ตามหาตัวเลข',
+    description:
+      'ททดสอบความเร็วในการมองหาเป้าหมายและประมวลผลในการทำตามลำดับอย่างถูกต้อง',
+    icon: '🔢',
+    iconClassName: 'bg-sp-info-soft text-sp-info',
+    path: '',
+    isAvailable: false,
+  },
 ]
 
 export function LibraryGamePage() {
