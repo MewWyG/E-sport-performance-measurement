@@ -99,3 +99,48 @@ export function TargetIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+//dualtask icon
+export function DualTaskIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      {/* Mouse body */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M12 3a5 5 0 00-5 5v8a5 5 0 0010 0V8a5 5 0 00-5-5z"
+      />
+
+      {/* Mouse split line */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M12 3v6"
+      />
+
+      {/* Keyboard / input keys */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M4 19h3M10.5 19h3M17 19h3"
+      />
+
+      {/* Tracking movement arrows */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M4 7l-2 2 2 2M20 7l2 2-2 2"
+      />
+    </svg>
+  )
+}

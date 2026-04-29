@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router'
 import { GameCard } from '../../components/game/GameCard'
 import { TargetIcon } from '../../components/icons/AppIcons'
+import { DualTaskIcon } from '../../components/icons/AppIcons'
 import { SiteFooter } from '../../components/layout/SiteFooter'
 import { SiteHeader } from '../../components/layout/SiteHeader'
 
@@ -21,6 +22,26 @@ const games = [
     icon: '🔢',
     iconClassName: 'bg-sp-info-soft text-sp-info',
     path: '',
+    isAvailable: false,
+  },
+  {
+    id: 'dual-task',
+    title: 'Aim & Input',
+    description:
+      'ทดสอบการติดตามเป้าหมายด้วยเมาส์ พร้อมกับกดปุ่มตามลำดับแบบ Esports',
+    icon: <DualTaskIcon className="h-7 w-7" />,
+    iconClassName: 'bg-sp-info-soft text-sp-info',
+    path: '/gameinfo/dualtask',
+    isAvailable: true,
+  },
+  {
+    id: 'speed-logic',
+    title: 'Speed Logic',
+    description:
+      'ทดสอบความเร็วในการคิด การตัดสินใจ และความถูกต้องภายใต้เวลาจำกัด',
+    icon: '⚡',
+    iconClassName: 'bg-sp-warning-soft text-sp-warning',
+    path: '/gameinfo/speedlogic',
     isAvailable: false,
   },
 ]
@@ -53,7 +74,8 @@ export function LibraryGamePage() {
                 title={game.title}
                 description={game.description}
                 onSelect={() => {
-                    navigate('/gameinfo/movingtarget')
+                  if (!game.isAvailable) return
+                  navigate(game.path)
                 }}
               />
             ))}
