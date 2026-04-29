@@ -6,6 +6,8 @@ import { LibraryGamePage } from './Pages/librarygame/LibraryGamePage'
 import { MovingTargetInfoPage } from './Pages/gameinfo/movingtarget_info/movingTarget_info'
 import { DualTaskInfoPage } from './Pages/gameinfo/dualtask_info/dualTask_info'
 import MovingTargetGamePage from './Pages/gamepages/movingtarget/movingTarget'
+import DualTaskGamePage from './Pages/gamepages/dualtask/dualtask'
+import DualTaskResultPage from './Pages/gamepages/dualtask/dualtaskResult'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -17,6 +19,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/gameinfo/movingtarget" element={<MovingTargetInfoPage />} />
         <Route path="/gameplay/movingtarget" element={<MovingTargetGamePage />} />
         <Route path="/gameinfo/dualtask" element={<DualTaskInfoPage />} />
+        <Route path="/gameplay/dualtask" element={<DualTaskGamePage />} />
+        <Route path="/gameplay/dualtask/result" element={<DualTaskResultPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

@@ -13,6 +13,8 @@ const games = [
       'ทดสอบการเล็ง การตอบสนอง และการติดตามเป้าหมายที่เคลื่อนที่บนหน้าจอ',
     icon: <TargetIcon className="h-7 w-7" />,
     iconClassName: 'bg-sp-danger-soft text-sp-danger',
+    path: '/gameinfo/movingtarget',
+    isAvailable: true,
   },
   {
     id: 'number-search',
