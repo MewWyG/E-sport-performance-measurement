@@ -28,6 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/gameplay/continuous-tracking" element={<ContinuousTrackingGamePage />} />
 
         <Route path="/gameinfo/dualtask" element={<DualTaskInfoPage />} />
+        <Route path="/gameinfo/dualtask" element={<DualTaskGamePage />} />
         <Route path="/gameplay/dualtask/result" element={<DualTaskResultPage />} />
       </Routes>
     </BrowserRouter>
