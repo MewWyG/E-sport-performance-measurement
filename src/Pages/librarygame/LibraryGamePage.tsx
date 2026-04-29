@@ -12,12 +12,24 @@ const games = [
       'ทดสอบการเล็ง การตอบสนอง และการติดตามเป้าหมายที่เคลื่อนที่บนหน้าจอ',
     icon: <TargetIcon className="h-7 w-7" />,
     iconClassName: 'bg-sp-danger-soft text-sp-danger',
+    path: '/gameinfo/movingtarget',
+    isAvailable: true,
+  },
+  {
+    id: 'continuous-tracking',
+    title: 'การติดตามเป้าหมายต่อเนื่อง',
+    description:
+      'ทดสอบการควบคุมเมาส์และการประสานงานระหว่างสายตากับมือ โดยติดตามเป้าหมายที่เคลื่อนที่ต่อเนื่อง',
+    icon: '🎯',
+    iconClassName: 'bg-sp-info-soft text-sp-info',
+    path: '/gameinfo/continuous-tracking',
+    isAvailable: true,
   },
   {
     id: 'number-search',
     title: 'ตามหาตัวเลข',
     description:
-      'ททดสอบความเร็วในการมองหาเป้าหมายและประมวลผลในการทำตามลำดับอย่างถูกต้อง',
+      'ทดสอบความเร็วในการมองหาเป้าหมายและประมวลผลในการทำตามลำดับอย่างถูกต้อง',
     icon: '🔢',
     iconClassName: 'bg-sp-info-soft text-sp-info',
     path: '',
@@ -53,7 +65,8 @@ export function LibraryGamePage() {
                 title={game.title}
                 description={game.description}
                 onSelect={() => {
-                    navigate('/gameinfo/movingtarget')
+                  if (!game.isAvailable || !game.path) return
+                  navigate(game.path)
                 }}
               />
             ))}
