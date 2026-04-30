@@ -752,7 +752,7 @@ export function PredictionInterceptGamePage() {
                       : '-'}
                   </p>
                   <p className="mt-1 text-xs text-sp-text-muted">
-                    ยิ่งน้อยยิ่งแม่น
+                    ยิ่งน้อยยิ่งดี
                   </p>
                 </div>
 
