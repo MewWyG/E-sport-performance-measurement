@@ -144,3 +144,29 @@ export function DualTaskIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+export function SpeedLogicIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M13 3L4 14h7l-1 7 10-12h-7l1-6z"
+      />
+
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M5 5h4M15 19h4"
+      />
+    </svg>
+  )
+}
