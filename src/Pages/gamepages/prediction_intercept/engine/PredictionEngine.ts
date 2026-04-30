@@ -2,27 +2,20 @@ import { PREDICTION_CONFIG } from '../config'
 import type {
   FeedbackState,
   GamePhase,
-  MotionMode,
   SpeedMode,
   TrialConfig,
   TrialResult,
 } from '../types'
+import { SeededRNG } from '../utils/math'
 import { createTrial } from './PredictionMotion'
-
-export type PredictionEngineState = {
-  phase: GamePhase
-  currentTrialIndex: number
-  trial: TrialConfig | null
-  feedback: FeedbackState | null
-  results: TrialResult[]
-}
 
 export class PredictionEngine {
   phase: GamePhase
   currentTrialIndex: number
   trialCount: number
-  motionMode: MotionMode
   speedMode: SpeedMode
+  seed: number
+  rng: SeededRNG
   trial: TrialConfig | null
   feedback: FeedbackState | null
   results: TrialResult[]
@@ -31,8 +24,9 @@ export class PredictionEngine {
     this.phase = 'idle'
     this.currentTrialIndex = 0
     this.trialCount = PREDICTION_CONFIG.trial.defaultTrialCount
-    this.motionMode = 'linear'
     this.speedMode = 'normal'
+    this.seed = PREDICTION_CONFIG.seed.defaultSeed
+    this.rng = new SeededRNG(this.seed)
     this.trial = null
     this.feedback = null
     this.results = []
@@ -48,12 +42,13 @@ export class PredictionEngine {
 
   configure(options: {
     trialCount: number
-    motionMode: MotionMode
     speedMode: SpeedMode
+    seed: number
   }): void {
     this.trialCount = options.trialCount
-    this.motionMode = options.motionMode
     this.speedMode = options.speedMode
+    this.seed = options.seed
+    this.rng = new SeededRNG(options.seed)
   }
 
   start(now: number): TrialConfig {
@@ -63,8 +58,8 @@ export class PredictionEngine {
     this.trial = createTrial(
       this.currentTrialIndex,
       now,
-      this.motionMode,
       this.speedMode,
+      this.rng,
     )
     this.feedback = null
 
@@ -74,14 +69,10 @@ export class PredictionEngine {
   startTrial(index: number, now: number): TrialConfig {
     this.currentTrialIndex = index
     this.phase = 'visible'
-    this.trial = createTrial(index, now, this.motionMode, this.speedMode)
+    this.trial = createTrial(index, now, this.speedMode, this.rng)
     this.feedback = null
 
     return this.trial
-  }
-
-  setPhase(phase: GamePhase): void {
-    this.phase = phase
   }
 
   setHidden(now: number): void {
@@ -113,21 +104,5 @@ export class PredictionEngine {
     }
 
     return this.startTrial(this.currentTrialIndex + 1, now)
-  }
-
-  finish(): void {
-    this.phase = 'finished'
-    this.trial = null
-    this.feedback = null
-  }
-
-  getState(): PredictionEngineState {
-    return {
-      phase: this.phase,
-      currentTrialIndex: this.currentTrialIndex,
-      trial: this.trial,
-      feedback: this.feedback,
-      results: this.results,
-    }
   }
 }
