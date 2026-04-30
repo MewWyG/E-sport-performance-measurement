@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router'
 import { GameCard } from '../../components/game/GameCard'
-import { TargetIcon } from '../../components/icons/AppIcons'
+import { PredictionInterceptIcon, TargetIcon } from '../../components/icons/AppIcons'
 import { DualTaskIcon } from '../../components/icons/AppIcons'
 import { SpeedLogicIcon } from '../../components/icons/AppIcons'
 import { SiteFooter } from '../../components/layout/SiteFooter'
 import { SiteHeader } from '../../components/layout/SiteHeader'
+import { ContinuousTrackingIcon } from '../../components/icons/AppIcons'
 
 const games = [
   {
@@ -22,7 +23,7 @@ const games = [
     title: 'การติดตามเป้าหมายต่อเนื่อง',
     description:
       'ทดสอบการควบคุมเมาส์และการประสานงานระหว่างสายตากับมือ โดยติดตามเป้าหมายที่เคลื่อนที่ต่อเนื่อง',
-    icon: '🎯',
+    icon: <ContinuousTrackingIcon className="h-7 w-7" />,
     iconClassName: 'bg-sp-info-soft text-sp-info',
     path: '/gameinfo/continuous-tracking',
     isAvailable: true,
@@ -62,7 +63,7 @@ const games = [
   title: 'การคาดการณ์ตำแหน่งเป้าหมาย',
   description:
     'ทดสอบความสามารถในการคาดการณ์การเคลื่อนที่ล่วงหน้า โดยคลิกตำแหน่งที่คิดว่าเป้าหมายจะไปถึงหลังจากเป้าหมายหายไป',
-  icon: '🧠',
+  icon: <PredictionInterceptIcon className="h-7 w-7" />,
   iconClassName: 'bg-sp-warning-soft text-sp-warning',
   path: '/gameinfo/prediction-intercept',
   isAvailable: true,

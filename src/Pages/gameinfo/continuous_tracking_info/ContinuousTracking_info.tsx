@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router'
 import { AppButton } from '../../../components/common/AppButton'
-import { TargetIcon } from '../../../components/icons/AppIcons'
+import { ContinuousTrackingIcon } from '../../../components/icons/AppIcons'
 import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
 
@@ -59,8 +59,8 @@ export function ContinuousTrackingInfoPage() {
 
           <div className="rounded-sp-card border border-sp-border bg-sp-glass p-8 backdrop-blur-xl md:p-12">
             <div className="flex flex-col items-center gap-10 md:flex-row md:gap-12">
-              <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-sp-card bg-sp-info-soft text-sp-info shadow-sp-brand md:h-48 md:w-48">
-                <TargetIcon className="h-16 w-16 md:h-24 md:w-24" />
+              <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-sp-card bg-sp-success-soft text-sp-success shadow-sp-brand md:h-48 md:w-48">
+                <ContinuousTrackingIcon className="h-16 w-16 md:h-24 md:w-24" />
               </div>
 
               <div className="flex-grow text-center md:text-left">
@@ -117,9 +117,20 @@ export function ContinuousTrackingInfoPage() {
             </div>
 
             <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <InfoBox label="ระยะเวลาทดสอบ" value="20 / 30 / 45 / 60 วินาที" />
-              <InfoBox label="วัดทักษะหลัก" value="Motor Control / Eye-Hand Coordination" />
-              <InfoBox label="โหมดพิเศษ" value="Custom Path + Copy / Load Path" />
+              <InfoBox
+                label="ระยะเวลาทดสอบ"
+                value="20 / 30 / 45 / 60 วินาที"
+              />
+
+              <InfoBox
+                label="วัดทักษะหลัก"
+                value="Motor Control / Eye-Hand Coordination"
+              />
+
+              <InfoBox
+                label="โหมดพิเศษ"
+                value="Custom Path + Copy / Load Path"
+              />
             </div>
           </div>
         </section>
@@ -148,3 +159,5 @@ function InfoBox({ label, value }: InfoBoxProps) {
     </div>
   )
 }
+
+export default ContinuousTrackingInfoPage

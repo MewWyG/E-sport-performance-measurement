@@ -170,3 +170,81 @@ export function SpeedLogicIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+export function PredictionInterceptIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      {/* Prediction path */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        strokeDasharray="3 3"
+        d="M4 17c3.5-5.5 7-8.5 16-10"
+      />
+
+      {/* Hidden / predicted target */}
+      <circle cx="17" cy="8" r="3" strokeWidth="2" />
+
+      {/* Click point */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M7 17l-3 3M4 17l3 3"
+      />
+
+      {/* Error line */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M7 17l10-9"
+      />
+
+      {/* Brain / prediction spark */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M12 4v2M10 5l-1.5-1.5M14 5l1.5-1.5"
+      />
+    </svg>
+  )
+}
+
+export function ContinuousTrackingIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" strokeWidth="2" />
+      <circle cx="12" cy="12" r="5" strokeWidth="2" />
+      <circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none" />
+
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M12 3v3M12 18v3M3 12h3M18 12h3"
+      />
+
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M8.5 8.5l1.5 1.5M15.5 8.5L14 10M8.5 15.5l1.5-1.5M15.5 15.5L14 14"
+      />
+    </svg>
+  )
+}
