@@ -97,6 +97,7 @@ function getPredictionBiasLabel(alongBias: number): string {
 export function PredictionInterceptGamePage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const frameRef = useRef<number | null>(null)
+  const countdownTimerRef = useRef<number | null>(null)
   const engineRef = useRef(new PredictionEngine())
 
   const [phase, setPhase] = useState<GamePhase>('idle')
@@ -113,6 +114,7 @@ export function PredictionInterceptGamePage() {
   const [copySeedStatus, setCopySeedStatus] = useState('')
   const [results, setResults] = useState<TrialResult[]>([])
   const [statusText, setStatusText] = useState('กดเริ่มทดสอบเพื่อเริ่มเกม')
+  const [countdownValue, setCountdownValue] = useState<number | null>(null)
 
   const validResults = getValidResults(results)
 
@@ -153,7 +155,10 @@ export function PredictionInterceptGamePage() {
   }
 
   const isRunning =
-    phase === 'visible' || phase === 'hidden' || phase === 'feedback'
+    countdownValue !== null ||
+    phase === 'visible' ||
+    phase === 'hidden' ||
+    phase === 'feedback'
 
   function syncFromEngine(): void {
     const engine = engineRef.current
@@ -166,6 +171,13 @@ export function PredictionInterceptGamePage() {
     if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current)
       frameRef.current = null
+    }
+  }
+
+  function clearCountdownTimer(): void {
+    if (countdownTimerRef.current !== null) {
+      window.clearInterval(countdownTimerRef.current)
+      countdownTimerRef.current = null
     }
   }
 
@@ -417,7 +429,7 @@ export function PredictionInterceptGamePage() {
     frameRef.current = requestAnimationFrame(renderFrame)
   }
 
-  function startGame(): void {
+  function startActualGame(): void {
     const engine = engineRef.current
     const now = performance.now()
 
@@ -443,12 +455,48 @@ export function PredictionInterceptGamePage() {
     frameRef.current = requestAnimationFrame(renderFrame)
   }
 
-  function resetGame(): void {
+  function startGame(): void {
     const engine = engineRef.current
 
+    clearCountdownTimer()
     stopLoop()
     engine.reset()
 
+    setResults([])
+    setCurrentTrialIndex(0)
+    setPhase('idle')
+    setActiveSeed(null)
+    setCopySeedStatus('')
+    setStatusText('เตรียมพร้อม เริ่มในอีก 3 วินาที')
+    renderStatic()
+
+    let count = 3
+    setCountdownValue(count)
+
+    countdownTimerRef.current = window.setInterval(() => {
+      count -= 1
+
+      if (count > 0) {
+        setCountdownValue(count)
+        setStatusText(`เตรียมพร้อม เริ่มในอีก ${count} วินาที`)
+        return
+      }
+
+      clearCountdownTimer()
+      setCountdownValue(null)
+      setStatusText('เริ่มการทดสอบ')
+      startActualGame()
+    }, 1000)
+  }
+
+  function resetGame(): void {
+    const engine = engineRef.current
+
+    clearCountdownTimer()
+    stopLoop()
+    engine.reset()
+
+    setCountdownValue(null)
     setStatusText('กดเริ่มทดสอบเพื่อเริ่มเกม')
     syncFromEngine()
     renderStatic()
@@ -509,6 +557,7 @@ export function PredictionInterceptGamePage() {
     renderStatic()
 
     return () => {
+      clearCountdownTimer()
       stopLoop()
     }
   }, [])
@@ -643,11 +692,11 @@ export function PredictionInterceptGamePage() {
 
               <div className="rounded-full border border-sp-border bg-sp-bg px-4 py-2 text-sm font-bold text-sp-text">
                 Trial {currentTrialIndex || 0}/{trialCount} •{' '}
-                {phaseLabel[phase]}
+                {countdownValue !== null ? 'เตรียมพร้อม' : phaseLabel[phase]}
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-sp-border bg-black">
+            <div className="relative overflow-hidden rounded-2xl border border-sp-border bg-black">
               <canvas
                 ref={canvasRef}
                 width={PREDICTION_CONFIG.canvas.width}
@@ -655,6 +704,22 @@ export function PredictionInterceptGamePage() {
                 className="block h-auto w-full cursor-crosshair"
                 onClick={handleCanvasClick}
               />
+
+              {countdownValue !== null && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/45 backdrop-blur-sm">
+                  <div className="mb-3 text-lg font-bold text-sp-text-muted">
+                    เตรียมพร้อม
+                  </div>
+
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full border border-sp-border bg-sp-primary text-6xl font-black text-white shadow-sp-brand">
+                    {countdownValue}
+                  </div>
+
+                  <div className="mt-4 text-sm font-bold text-sp-text-muted">
+                    เริ่มทดสอบหลังนับถอยหลัง
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
@@ -687,7 +752,7 @@ export function PredictionInterceptGamePage() {
                       : '-'}
                   </p>
                   <p className="mt-1 text-xs text-sp-text-muted">
-                    ยิ่งน้อยยิ่งแม่น
+                    ยิ่งน้อยยิ่งดี
                   </p>
                 </div>
 
