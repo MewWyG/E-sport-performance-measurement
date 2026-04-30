@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
@@ -7,10 +7,12 @@ import { useMovingTargetGame } from './hooks/useMovingTargetGame'
 import { MovingTargetPlayArea } from './ui/MovingTargetPlayArea'
 import { MovingTargetStatCard } from './ui/MovingTargetStatCard'
 import { formatTime } from './utils/format'
+import { buildMovingTargetResultPayload } from './utils/resultPayload'
 
 function MovingTargetGamePage() {
   const navigate = useNavigate()
   const areaRef = useRef<HTMLDivElement | null>(null)
+  const hasPreparedResultRef = useRef(false)
 
   const {
     gameState,
@@ -26,6 +28,50 @@ function MovingTargetGamePage() {
     handleAreaClick,
     handleTargetClick,
   } = useMovingTargetGame({ areaRef })
+
+  const resultStats = useMemo(
+    () => ({
+      hits,
+      misses,
+      wrongClicks,
+      elapsedMs,
+      accuracy,
+      averageResponseTime,
+    }),
+    [
+      hits,
+      misses,
+      wrongClicks,
+      elapsedMs,
+      accuracy,
+      averageResponseTime,
+    ],
+  )
+
+  useEffect(() => {
+    if (gameState !== 'finished') {
+      hasPreparedResultRef.current = false
+      return
+    }
+
+    if (hasPreparedResultRef.current) {
+      return
+    }
+
+    hasPreparedResultRef.current = true
+
+    const resultPayload = buildMovingTargetResultPayload({
+      stats: resultStats,
+    })
+
+    // จุดนี้เตรียมไว้ให้ backend/API มาเชื่อมต่อภายหลัง
+    // ตอนนี้ยังไม่ยิง API จริง เพราะ backend ยังไม่ได้ทำ
+    window.dispatchEvent(
+      new CustomEvent('skillpulse:game-result-ready', {
+        detail: resultPayload,
+      }),
+    )
+  }, [gameState, resultStats])
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-sp-bg font-sans text-sp-text">
@@ -89,14 +135,7 @@ function MovingTargetGamePage() {
             areaRef={areaRef}
             gameState={gameState}
             targets={targets}
-            stats={{
-              hits,
-              misses,
-              wrongClicks,
-              elapsedMs,
-              accuracy,
-              averageResponseTime,
-            }}
+            stats={resultStats}
             onAreaClick={handleAreaClick}
             onStart={startGame}
             onStop={stopGame}
