@@ -31,11 +31,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
         <Route path="/gameinfo/continuous-tracking" element={<ContinuousTrackingInfoPage />} />
         <Route path="/gameplay/continuous-tracking" element={<ContinuousTrackingGamePage />} />
+
         <Route path="/gameinfo/prediction-intercept" element={<PredictionInterceptInfoPage />} />
         <Route path="/gameplay/prediction-intercept" element={<PredictionInterceptGamePage />} />
+
         <Route path="/gameinfo/dualtask" element={<DualTaskInfoPage />} />
         <Route path="/gameplay/dualtask" element={<DualTaskGamePage />} />
         <Route path="/gameplay/dualtask/result" element={<DualTaskResultPage />} />
+        
         <Route path="/gameinfo/speedlogic" element={<SpeedLogicInfoPage />} />
         <Route path="/gameplay/speedlogic" element={<SpeedLogicGamePage />} />
         <Route path="/gameplay/speedlogic/result" element={<SpeedLogicResultPage />} />
