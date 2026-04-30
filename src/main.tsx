@@ -14,6 +14,8 @@ import { SpeedLogicInfoPage } from './Pages/gameinfo/speedlogic_info/speedlogic_
 import MovingTargetGamePage from './Pages/gamepages/movingtarget/movingTarget'
 import DualTaskGamePage from './Pages/gamepages/dualtask/dualtask'
 import DualTaskResultPage from './Pages/gamepages/dualtask/dualtaskResult'
+import SpeedLogicGamePage from './Pages/gamepages/speedlogic/speedLogic'
+import SpeedLogicResultPage from './Pages/gamepages/speedlogic/speedLogicResult'
 import ContinuousTrackingGamePage from './Pages/gamepages/continuous_tracking/ContinuousTrackingGame'
 import PredictionInterceptGamePage from './Pages/gamepages/prediction_intercept/PredictionInterceptGame'
 import './index.css'
@@ -35,6 +37,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/gameplay/dualtask" element={<DualTaskGamePage />} />
         <Route path="/gameplay/dualtask/result" element={<DualTaskResultPage />} />
         <Route path="/gameinfo/speedlogic" element={<SpeedLogicInfoPage />} />
+        <Route path="/gameplay/speedlogic" element={<SpeedLogicGamePage />} />
+        <Route path="/gameplay/speedlogic/result" element={<SpeedLogicResultPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,
