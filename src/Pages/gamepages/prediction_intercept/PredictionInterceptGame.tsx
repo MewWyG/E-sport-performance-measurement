@@ -38,6 +38,62 @@ function generateRandomSeed(): number {
   return Math.floor(Math.random() * PREDICTION_CONFIG.seed.maxRandomSeed) + 1
 }
 
+function getAccuracyFromError(errorPx: number): number {
+  const perfectThreshold = 10
+  const failThreshold = 140
+
+  if (!Number.isFinite(errorPx)) return 0
+  if (errorPx <= perfectThreshold) return 100
+  if (errorPx >= failThreshold) return 0
+
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      100 -
+        ((errorPx - perfectThreshold) / (failThreshold - perfectThreshold)) *
+          100,
+    ),
+  )
+}
+
+function getTimingAccuracyFromError(errorMs: number): number {
+  const perfectThreshold = 80
+  const failThreshold = 700
+
+  if (!Number.isFinite(errorMs)) return 0
+
+  const absError = Math.abs(errorMs)
+
+  if (absError <= perfectThreshold) return 100
+  if (absError >= failThreshold) return 0
+
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      100 -
+        ((absError - perfectThreshold) / (failThreshold - perfectThreshold)) *
+          100,
+    ),
+  )
+}
+
+function getAccuracyLabel(score: number): string {
+  if (score >= 85) return 'แม่นยำมาก'
+  if (score >= 70) return 'ดี'
+  if (score >= 50) return 'พอใช้'
+  return 'ควรฝึกเพิ่ม'
+}
+
+function getPredictionBiasLabel(alongBias: number): string {
+  if (!Number.isFinite(alongBias)) return '-'
+
+  if (alongBias > 20) return 'มักคลิกนำหน้าเป้าหมาย'
+  if (alongBias < -20) return 'มักคลิกช้ากว่าเป้าหมาย'
+  return 'คาดการณ์ใกล้ตำแหน่งจริง'
+}
+
 export function PredictionInterceptGamePage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const frameRef = useRef<number | null>(null)
@@ -63,12 +119,30 @@ export function PredictionInterceptGamePage() {
   const predictionErrors = validResults.map((result) => result.predictionError)
   const timingErrors = validResults.map((result) => result.timingError)
   const alongBiasValues = validResults.map((result) => result.alongBias)
-  const lateralBiasValues = validResults.map((result) => result.lateralBias)
 
   const meanPredictionError = mean(predictionErrors)
   const meanAbsTimingError = mean(timingErrors.map((value) => Math.abs(value)))
   const meanAlongBias = mean(alongBiasValues)
-  const meanLateralBias = mean(lateralBiasValues)
+
+  const predictionAccuracy = validResults.length
+    ? getAccuracyFromError(meanPredictionError)
+    : 0
+
+  const timingAccuracy = validResults.length
+    ? getTimingAccuracyFromError(meanAbsTimingError)
+    : 0
+
+  const overallAccuracy = validResults.length
+    ? predictionAccuracy * 0.75 + timingAccuracy * 0.25
+    : 0
+
+  const accuracyLabel = validResults.length
+    ? getAccuracyLabel(overallAccuracy)
+    : ''
+
+  const biasLabel = validResults.length
+    ? getPredictionBiasLabel(meanAlongBias)
+    : '-'
 
   const phaseLabel: Record<GamePhase, string> = {
     idle: 'พร้อม',
@@ -146,28 +220,27 @@ export function PredictionInterceptGamePage() {
   }
 
   function drawPathGuide(ctx: CanvasRenderingContext2D): void {
-  const trial = engineRef.current.trial
-  if (!trial) return
+    const trial = engineRef.current.trial
+    if (!trial) return
 
-  const points = getPathGuidePoints(trial)
+    const points = getPathGuidePoints(trial)
+    if (points.length < 2) return
 
-  if (points.length < 2) return
+    ctx.save()
+    ctx.strokeStyle = PREDICTION_CONFIG.colors.guideLine
+    ctx.lineWidth = 3
+    ctx.setLineDash([10, 8])
+    ctx.beginPath()
 
-  ctx.save()
-  ctx.strokeStyle = PREDICTION_CONFIG.colors.guideLine
-  ctx.lineWidth = 3
-  ctx.setLineDash([10, 8])
-  ctx.beginPath()
+    ctx.moveTo(points[0].x, points[0].y)
 
-  ctx.moveTo(points[0].x, points[0].y)
+    for (let i = 1; i < points.length; i += 1) {
+      ctx.lineTo(points[i].x, points[i].y)
+    }
 
-  for (let i = 1; i < points.length; i += 1) {
-    ctx.lineTo(points[i].x, points[i].y)
+    ctx.stroke()
+    ctx.restore()
   }
-
-  ctx.stroke()
-  ctx.restore()
-}
 
   function drawClick(ctx: CanvasRenderingContext2D, point: Point): void {
     const colors = PREDICTION_CONFIG.colors
@@ -292,7 +365,9 @@ export function PredictionInterceptGamePage() {
 
       if (elapsed >= trial.visibleMs) {
         engine.setHidden(now)
-        setStatusText('เป้าหมายหายไปแล้ว คลิกตำแหน่งที่คุณคิดว่าเป้าหมายจะไปถึง')
+        setStatusText(
+          'เป้าหมายหายไปแล้ว คลิกตำแหน่งที่คุณคิดว่าเป้าหมายจะไปถึง',
+        )
         syncFromEngine()
       }
     }
@@ -452,7 +527,7 @@ export function PredictionInterceptGamePage() {
           </Link>
 
           <h1 className="text-3xl font-black text-sp-text">
-            แบบทดสอบการคาดการณ์ตำแหน่งเป้าหมาย
+            Prediction Intercept
           </h1>
 
           <p className="mt-2 text-sp-text-muted">
@@ -483,7 +558,9 @@ export function PredictionInterceptGamePage() {
               <select
                 className="mt-2 w-full rounded-xl border border-sp-border bg-sp-bg px-3 py-3 text-sp-text"
                 value={speedMode}
-                onChange={(e) => setSpeedMode(e.currentTarget.value as SpeedMode)}
+                onChange={(e) =>
+                  setSpeedMode(e.currentTarget.value as SpeedMode)
+                }
                 disabled={isRunning}
               >
                 <option value="slow">Slow</option>
@@ -497,7 +574,9 @@ export function PredictionInterceptGamePage() {
               <select
                 className="mt-2 w-full rounded-xl border border-sp-border bg-sp-bg px-3 py-3 text-sp-text"
                 value={seedMode}
-                onChange={(e) => setSeedMode(e.currentTarget.value as SeedMode)}
+                onChange={(e) =>
+                  setSeedMode(e.currentTarget.value as SeedMode)
+                }
                 disabled={isRunning}
               >
                 <option value="random">Random</option>
@@ -563,7 +642,8 @@ export function PredictionInterceptGamePage() {
               </div>
 
               <div className="rounded-full border border-sp-border bg-sp-bg px-4 py-2 text-sm font-bold text-sp-text">
-                Trial {currentTrialIndex || 0}/{trialCount} • {phaseLabel[phase]}
+                Trial {currentTrialIndex || 0}/{trialCount} •{' '}
+                {phaseLabel[phase]}
               </div>
             </div>
 
@@ -586,41 +666,56 @@ export function PredictionInterceptGamePage() {
 
               <div className="grid grid-cols-1 gap-3">
                 <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
+                  <p className="text-sm text-sp-text-muted">ความแม่นยำรวม</p>
+                  <p className="text-3xl font-black text-sp-text">
+                    {validResults.length
+                      ? `${overallAccuracy.toFixed(0)}%`
+                      : '-'}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-sp-primary">
+                    {validResults.length ? accuracyLabel : ''}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
                   <p className="text-sm text-sp-text-muted">
-                    Mean Prediction Error
+                    ระยะพลาดเฉลี่ย
                   </p>
                   <p className="text-2xl font-black text-sp-text">
                     {validResults.length
                       ? `${meanPredictionError.toFixed(1)} px`
                       : '-'}
                   </p>
+                  <p className="mt-1 text-xs text-sp-text-muted">
+                    ยิ่งน้อยยิ่งแม่น
+                  </p>
                 </div>
 
                 <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
                   <p className="text-sm text-sp-text-muted">
-                    Mean |Timing Error|
+                    ความแม่นยำด้านเวลา
                   </p>
                   <p className="text-2xl font-black text-sp-text">
                     {validResults.length
-                      ? `${meanAbsTimingError.toFixed(0)} ms`
+                      ? `${timingAccuracy.toFixed(0)}%`
                       : '-'}
+                  </p>
+                  <p className="mt-1 text-xs text-sp-text-muted">
+                    คำนวณจากการคลิกเร็วหรือช้าเกินไป
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
-                  <p className="text-sm text-sp-text-muted">Along Bias</p>
-                  <p className="text-2xl font-black text-sp-text">
+                  <p className="text-sm text-sp-text-muted">
+                    แนวโน้มการคาดการณ์
+                  </p>
+                  <p className="text-lg font-black text-sp-text">
+                    {validResults.length ? biasLabel : '-'}
+                  </p>
+                  <p className="mt-1 text-xs text-sp-text-muted">
+                    ค่าเฉลี่ยแนวหน้า-หลัง:{' '}
                     {validResults.length
                       ? `${meanAlongBias.toFixed(1)} px`
-                      : '-'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
-                  <p className="text-sm text-sp-text-muted">Lateral Bias</p>
-                  <p className="text-2xl font-black text-sp-text">
-                    {validResults.length
-                      ? `${meanLateralBias.toFixed(1)} px`
                       : '-'}
                   </p>
                 </div>
@@ -635,9 +730,14 @@ export function PredictionInterceptGamePage() {
               <ul className="space-y-2 text-sm text-sp-text-muted">
                 <li>• เป้าหมายเคลื่อนที่เป็นเส้นตรงเท่านั้น</li>
                 <li>• สังเกตทิศทางและความเร็วของเป้าหมาย</li>
-                <li>• เมื่อเป้าหมายหายไป ให้คลิกตำแหน่งที่คาดว่าเป้าหมายจะอยู่</li>
-                <li>• ใช้ Fixed Seed เพื่อให้ผู้เล่นหลายคนเจอเส้นทางเดียวกัน</li>
-                <li>• Prediction Error ยิ่งน้อยยิ่งดี</li>
+                <li>
+                  • เมื่อเป้าหมายหายไป
+                  ให้คลิกตำแหน่งที่คาดว่าเป้าหมายจะอยู่
+                </li>
+                <li>
+                  • ใช้ Fixed Seed เพื่อให้ผู้เล่นหลายคนเจอเส้นทางเดียวกัน
+                </li>
+                <li>• ความแม่นยำรวมยิ่งสูงยิ่งดี</li>
               </ul>
             </section>
           </aside>
