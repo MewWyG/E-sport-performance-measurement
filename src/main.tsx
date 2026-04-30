@@ -9,6 +9,7 @@ import { ContinuousTrackingInfoPage } from './Pages/gameinfo/continuous_tracking
 import { PredictionInterceptInfoPage } from './Pages/gameinfo/prediction_intercept_info/PredictionIntercept_info'
 
 import { DualTaskInfoPage } from './Pages/gameinfo/dualtask_info/dualTask_info'
+import { SpeedLogicInfoPage } from './Pages/gameinfo/speedlogic_info/speedlogic_info'
 
 import MovingTargetGamePage from './Pages/gamepages/movingtarget/movingTarget'
 import DualTaskGamePage from './Pages/gamepages/dualtask/dualtask'
@@ -33,6 +34,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/gameinfo/dualtask" element={<DualTaskInfoPage />} />
         <Route path="/gameplay/dualtask" element={<DualTaskGamePage />} />
         <Route path="/gameplay/dualtask/result" element={<DualTaskResultPage />} />
+        <Route path="/gameinfo/speedlogic" element={<SpeedLogicInfoPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

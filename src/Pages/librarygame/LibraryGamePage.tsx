@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router'
 import { GameCard } from '../../components/game/GameCard'
 import { TargetIcon } from '../../components/icons/AppIcons'
 import { DualTaskIcon } from '../../components/icons/AppIcons'
+import { SpeedLogicIcon } from '../../components/icons/AppIcons'
 import { SiteFooter } from '../../components/layout/SiteFooter'
 import { SiteHeader } from '../../components/layout/SiteHeader'
 
@@ -51,10 +52,10 @@ const games = [
     title: 'Speed Logic',
     description:
       'ทดสอบความเร็วในการคิด การตัดสินใจ และความถูกต้องภายใต้เวลาจำกัด',
-    icon: '⚡',
+    icon: <SpeedLogicIcon className="h-7 w-7" />,
     iconClassName: 'bg-sp-warning-soft text-sp-warning',
     path: '/gameinfo/speedlogic',
-    isAvailable: false,
+    isAvailable: true,
   },
   {
   id: 'prediction-intercept',
