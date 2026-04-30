@@ -1,6 +1,6 @@
 export type GamePhase = 'idle' | 'visible' | 'hidden' | 'feedback' | 'finished'
 
-export type MotionMode = 'linear' | 'curve' | 'acceleration'
+export type SeedMode = 'random' | 'fixed'
 
 export type SpeedMode = 'slow' | 'normal' | 'fast'
 
@@ -22,14 +22,7 @@ export type TrialConfig = {
   vx: number
   vy: number
 
-  ax: number
-  ay: number
-
-  curveAmplitude: number
-  curveFrequency: number
-  curvePhase: number
-
-  motionMode: MotionMode
+  direction: 1 | -1
 }
 
 export type TrialResult = {

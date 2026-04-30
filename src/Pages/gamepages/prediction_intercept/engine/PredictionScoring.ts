@@ -12,17 +12,10 @@ export function calculateTrialResult(
   const predictionError = distance(click, actual)
   const timingError = now - trial.hiddenStartAt - trial.occlusionMs
 
-  const future = getTargetPosition(trial, now - trial.startAt + 16)
+  const velocityLength = Math.hypot(trial.vx, trial.vy) || 1
 
-  const velocity = {
-    x: future.x - actual.x,
-    y: future.y - actual.y,
-  }
-
-  const velocityLength = Math.hypot(velocity.x, velocity.y) || 1
-
-  const vx = velocity.x / velocityLength
-  const vy = velocity.y / velocityLength
+  const vx = trial.vx / velocityLength
+  const vy = trial.vy / velocityLength
 
   const errorVector = {
     x: click.x - actual.x,
