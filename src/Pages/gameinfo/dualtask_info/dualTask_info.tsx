@@ -49,9 +49,6 @@ export function DualTaskInfoPage() {
               </div>
 
               <div className="flex-grow text-center md:text-left">
-                <p className="mb-3 text-sm font-bold uppercase tracking-[0.25em] text-sp-secondary">
-                  Esports Cognitive Test
-                </p>
 
                 <h1 className="mb-4 text-4xl font-black text-sp-text md:text-5xl">
                   Aim & Input
