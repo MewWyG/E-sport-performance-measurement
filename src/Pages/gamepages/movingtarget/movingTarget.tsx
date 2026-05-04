@@ -20,6 +20,7 @@ function MovingTargetGamePage() {
     hits,
     misses,
     wrongClicks,
+    spawnedTargetCount,
     elapsedMs,
     accuracy,
     averageResponseTime,
@@ -34,6 +35,7 @@ function MovingTargetGamePage() {
       hits,
       misses,
       wrongClicks,
+      spawnedTargetCount,
       elapsedMs,
       accuracy,
       averageResponseTime,
@@ -42,6 +44,7 @@ function MovingTargetGamePage() {
       hits,
       misses,
       wrongClicks,
+      spawnedTargetCount,
       elapsedMs,
       accuracy,
       averageResponseTime,
@@ -64,8 +67,6 @@ function MovingTargetGamePage() {
       stats: resultStats,
     })
 
-    // จุดนี้เตรียมไว้ให้ backend/API มาเชื่อมต่อภายหลัง
-    // ตอนนี้ยังไม่ยิง API จริง เพราะ backend ยังไม่ได้ทำ
     window.dispatchEvent(
       new CustomEvent('skillpulse:game-result-ready', {
         detail: resultPayload,
@@ -107,10 +108,15 @@ function MovingTargetGamePage() {
             </div>
           </div>
 
-          <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+          <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
             <MovingTargetStatCard
-              label="เป้าหมาย"
-              value={`${hits}/${TOTAL_TARGETS}`}
+              label="เป้าจริง"
+              value={`${spawnedTargetCount}/${TOTAL_TARGETS}`}
+            />
+
+            <MovingTargetStatCard
+              label="ยิงโดน"
+              value={`${hits}`}
             />
 
             <MovingTargetStatCard label="พลาด" value={`${misses}`} />

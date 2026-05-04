@@ -37,7 +37,7 @@ export function MovingTargetPlayArea({
     <div
       ref={areaRef}
       onClick={onAreaClick}
-      className="relative flex min-h-[520px] cursor-crosshair select-none items-center justify-center overflow-hidden rounded-sp-card border-2 border-sp-border bg-sp-glass p-8 text-center shadow-2xl backdrop-blur-xl"
+      className="sp-game-grid-bg relative flex min-h-[520px] cursor-crosshair select-none items-center justify-center overflow-hidden rounded-sp-card border-2 border-sp-border p-8 text-center shadow-2xl"
     >
       {gameState === 'ready' && (
         <MovingTargetReadyState onStart={onStart} />

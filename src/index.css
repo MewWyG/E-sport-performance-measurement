@@ -116,3 +116,19 @@ body {
 button {
   font-family: inherit;
 }
+
+.sp-game-grid-bg {
+  background-color: var(--color-sp-bg);
+  background-image:
+    radial-gradient(circle at center, rgba(59, 130, 246, 0.10) 0%, rgba(59, 130, 246, 0.04) 22%, rgba(0, 0, 0, 0) 55%),
+    linear-gradient(rgba(148, 163, 184, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.10) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    72px 72px,
+    72px 72px;
+  background-position:
+    center center,
+    center center,
+    center center;
+}

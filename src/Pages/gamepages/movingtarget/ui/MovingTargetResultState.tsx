@@ -41,15 +41,35 @@ export function MovingTargetResultState({
       </p>
 
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <ResultBox label="เวลา" value={formatTime(stats.elapsedMs)} />
-        <ResultBox label="เป้าที่โดน" value={`${stats.hits}`} />
-        <ResultBox label="ความแม่นยำ" value={`${stats.accuracy}%`} />
+        <ResultBox
+          label="เวลา"
+          value={formatTime(stats.elapsedMs)}
+        />
+
+        <ResultBox
+          label="เป้าจริง"
+          value={`${stats.spawnedTargetCount}/50`}
+        />
+
+        <ResultBox
+          label="ยิงโดน"
+          value={`${stats.hits}/${stats.spawnedTargetCount}`}
+        />
+
+        <ResultBox
+          label="ความแม่นยำ"
+          value={`${stats.accuracy}%`}
+        />
+
         <ResultBox
           label="เวลาเฉลี่ย"
           value={`${stats.averageResponseTime} ms`}
         />
-        <ResultBox label="พลาด" value={`${stats.misses}`} />
-        <ResultBox label="คลิกผิด" value={`${stats.wrongClicks}`} />
+
+        <ResultBox
+          label="พลาด / คลิกผิด"
+          value={`${stats.misses} / ${stats.wrongClicks}`}
+        />
       </div>
 
       <div className="flex flex-col justify-center gap-4 md:flex-row">
