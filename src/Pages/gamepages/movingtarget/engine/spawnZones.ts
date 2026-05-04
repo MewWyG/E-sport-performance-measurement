@@ -1,11 +1,16 @@
 import {
   DECOY_MIN_DISTANCE,
   SPAWN_MARGIN,
+  SPAWN_POINT_MAX_ATTEMPTS,
   ZONE_COLUMNS,
   ZONE_ROWS,
 } from '../config'
 import type { Bounds, Point } from '../types'
 import { randomBetween } from '../utils/random'
+import {
+  getStopButtonSafeRect,
+  isCircleOverlappingRect,
+} from './playAreaObstacles'
 
 const TOTAL_ZONES = ZONE_ROWS * ZONE_COLUMNS
 
@@ -30,7 +35,6 @@ export function pickNextTargetZone(
 
     const distance = getZoneManhattanDistance(previousZoneId, zoneId)
 
-    // กันการข้ามจากมุมหนึ่งไปมุมตรงข้ามแบบสุดโต่งบ่อยเกินไป
     return distance <= 3
   })
 
@@ -85,10 +89,57 @@ export function pickPointInZone(
   const fallbackX = column * cellWidth + cellWidth / 2
   const fallbackY = row * cellHeight + cellHeight / 2
 
-  return {
-    x: maxX <= minX ? fallbackX : randomBetween(minX, maxX),
-    y: maxY <= minY ? fallbackY : randomBetween(minY, maxY),
+  const stopButtonSafeRect = getStopButtonSafeRect(bounds)
+
+  for (let attempt = 0; attempt < SPAWN_POINT_MAX_ATTEMPTS; attempt += 1) {
+    const point = {
+      x: maxX <= minX ? fallbackX : randomBetween(minX, maxX),
+      y: maxY <= minY ? fallbackY : randomBetween(minY, maxY),
+    }
+
+    if (!isCircleOverlappingRect(point.x, point.y, halfSize, stopButtonSafeRect)) {
+      return point
+    }
   }
+
+  const centeredPoint = {
+    x: fallbackX,
+    y: fallbackY,
+  }
+
+  if (
+    !isCircleOverlappingRect(
+      centeredPoint.x,
+      centeredPoint.y,
+      halfSize,
+      stopButtonSafeRect,
+    )
+  ) {
+    return centeredPoint
+  }
+
+  const shiftedLeftPoint = {
+    x: clamp(stopButtonSafeRect.x - halfSize - 12, minX, maxX),
+    y: clamp(fallbackY, minY, maxY),
+  }
+
+  if (
+    !isCircleOverlappingRect(
+      shiftedLeftPoint.x,
+      shiftedLeftPoint.y,
+      halfSize,
+      stopButtonSafeRect,
+    )
+  ) {
+    return shiftedLeftPoint
+  }
+
+  const shiftedDownPoint = {
+    x: clamp(fallbackX, minX, maxX),
+    y: clamp(stopButtonSafeRect.y + stopButtonSafeRect.height + halfSize + 12, minY, maxY),
+  }
+
+  return shiftedDownPoint
 }
 
 export function isFarEnoughFromCorrectTarget(
@@ -131,12 +182,13 @@ function getZoneManhattanDistance(a: number, b: number) {
   const zoneA = getZonePosition(a)
   const zoneB = getZonePosition(b)
 
-  return (
-    Math.abs(zoneA.row - zoneB.row) +
-    Math.abs(zoneA.column - zoneB.column)
-  )
+  return Math.abs(zoneA.row - zoneB.row) + Math.abs(zoneA.column - zoneB.column)
 }
 
 function getDistance(a: Point, b: Point) {
   return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
 }

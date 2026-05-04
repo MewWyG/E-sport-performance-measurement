@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import {
   PLAY_AREA_DEFAULT_HEIGHT,
@@ -12,9 +12,9 @@ import {
   calculateAccuracy,
   calculateAverageResponseTime,
 } from '../engine/scoring'
+import { createZoneUseCounts } from '../engine/spawnZones'
 import { createTargets } from '../engine/targetFactory'
 import { updateTargets } from '../engine/targetMovement'
-import { createZoneUseCounts } from '../engine/spawnZones'
 import type { Bounds, GameState, MovingTarget } from '../types'
 
 type UseMovingTargetGameParams = {
@@ -41,6 +41,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const [hits, setHits] = useState(0)
   const [misses, setMisses] = useState(0)
   const [wrongClicks, setWrongClicks] = useState(0)
+  const [spawnedTargetCount, setSpawnedTargetCount] = useState(0)
   const [elapsedMs, setElapsedMs] = useState(0)
 
   const accuracy = calculateAccuracy(hits, misses, wrongClicks)
@@ -49,8 +50,6 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     totalResponseTimeRef.current,
     hits,
   )
-
-  const currentDifficulty = useMemo(() => getDifficulty(hits), [hits])
 
   useEffect(() => {
     gameStateRef.current = gameState
@@ -92,7 +91,13 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
 
       if (isExpired) {
         addMiss()
-        spawnTargets(hitsRef.current, now)
+
+        if (spawnIndexRef.current >= TOTAL_TARGETS) {
+          finishGame(now)
+          return
+        }
+
+        spawnTargets(now)
       } else {
         targetsRef.current = updatedTargets
         setTargets(updatedTargets)
@@ -135,6 +140,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setHits(0)
     setMisses(0)
     setWrongClicks(0)
+    setSpawnedTargetCount(0)
     setElapsedMs(0)
     setTargets([])
   }
@@ -148,7 +154,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     gameStateRef.current = 'running'
 
     setGameState('running')
-    spawnTargets(0, now)
+    spawnTargets(now)
   }
 
   function stopGame() {
@@ -167,9 +173,17 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setGameState('finished')
   }
 
-  function spawnTargets(currentHits: number, now = performance.now()) {
+  function spawnTargets(now = performance.now()) {
+    if (spawnIndexRef.current >= TOTAL_TARGETS) {
+      finishGame(now)
+      return
+    }
+
     const bounds = getPlayAreaBounds()
-    const difficulty = getDifficulty(currentHits)
+
+    // ใช้จำนวนเป้าจริงที่เกิดแล้วเป็นตัวคุม difficulty
+    // ไม่ใช้ hits เพราะถ้าผู้เล่นพลาด difficulty ควรยังเดินหน้าตามลำดับเป้า
+    const difficulty = getDifficulty(spawnIndexRef.current)
 
     const nextTargets = createTargets({
       difficulty,
@@ -181,6 +195,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     })
 
     spawnIndexRef.current += 1
+    setSpawnedTargetCount(spawnIndexRef.current)
 
     const correctTarget = nextTargets.find((target) => target.isCorrect)
 
@@ -230,12 +245,12 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
 
     setHits(nextHits)
 
-    if (nextHits >= TOTAL_TARGETS) {
+    if (spawnIndexRef.current >= TOTAL_TARGETS) {
       finishGame(now)
       return
     }
 
-    spawnTargets(nextHits, now)
+    spawnTargets(now)
   }
 
   return {
@@ -244,10 +259,10 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     hits,
     misses,
     wrongClicks,
+    spawnedTargetCount,
     elapsedMs,
     accuracy,
     averageResponseTime,
-    currentDifficulty,
     startGame,
     stopGame,
     handleAreaClick,

@@ -11,3 +11,12 @@ export const ZONE_COLUMNS = 3
 
 export const SPAWN_MARGIN = 28
 export const DECOY_MIN_DISTANCE = 96
+export const SPAWN_POINT_MAX_ATTEMPTS = 24
+
+export const STOP_BUTTON_SAFE_AREA_TOP = 12
+export const STOP_BUTTON_SAFE_AREA_RIGHT = 12
+export const STOP_BUTTON_SAFE_AREA_WIDTH = 156
+export const STOP_BUTTON_SAFE_AREA_HEIGHT = 72
+
+export const TARGET_COLLISION_GAP = 10
+export const TARGET_COLLISION_RESOLVE_PASSES = 3

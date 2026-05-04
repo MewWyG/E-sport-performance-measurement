@@ -18,8 +18,6 @@ export function buildMovingTargetResultPayload({
     player_id: playerId,
     game_id: 'moving-target',
 
-    // ตอนนี้ใช้ accuracy เป็น score หลักก่อน
-    // ถ้าทีม backend อยากเปลี่ยนสูตรคะแนน สามารถคำนวณใหม่จาก raw_data_json ได้
     score: stats.accuracy,
 
     accuracy: stats.accuracy,
@@ -28,6 +26,7 @@ export function buildMovingTargetResultPayload({
 
     raw_data_json: {
       totalTargets: TOTAL_TARGETS,
+      spawnedTargetCount: stats.spawnedTargetCount,
       hits: stats.hits,
       misses: stats.misses,
       wrongClicks: stats.wrongClicks,

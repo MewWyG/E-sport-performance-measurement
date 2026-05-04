@@ -40,6 +40,7 @@ export type MovingTargetStats = {
   hits: number
   misses: number
   wrongClicks: number
+  spawnedTargetCount: number
   elapsedMs: number
   accuracy: number
   averageResponseTime: number

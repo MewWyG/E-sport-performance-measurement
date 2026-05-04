@@ -1,5 +1,10 @@
 import type { Bounds, MovingTarget } from '../types'
 import { randomBetween } from '../utils/random'
+import {
+  getStopButtonSafeRect,
+  resolveCircleRectCollision,
+} from './playAreaObstacles'
+import { separateOverlappingTargets } from './targetSeparation'
 
 export function updateTargets(
   targets: MovingTarget[],
@@ -7,7 +12,9 @@ export function updateTargets(
   now: number,
   bounds: Bounds,
 ): MovingTarget[] {
-  return targets.map((target) => {
+  const stopButtonSafeRect = getStopButtonSafeRect(bounds)
+
+  const movedTargets = targets.map((target) => {
     let { x, y, vx, vy, nextTurnAt } = target
 
     if (target.pattern === 'random' && now >= nextTurnAt) {
@@ -44,13 +51,24 @@ export function updateTargets(
       vy = -Math.abs(vy)
     }
 
-    return {
-      ...target,
+    const resolved = resolveCircleRectCollision({
       x,
       y,
+      radius: halfSize,
       vx,
       vy,
+      rect: stopButtonSafeRect,
+    })
+
+    return {
+      ...target,
+      x: resolved.x,
+      y: resolved.y,
+      vx: resolved.vx,
+      vy: resolved.vy,
       nextTurnAt,
     }
   })
+
+  return separateOverlappingTargets(movedTargets, bounds)
 }
