@@ -14,6 +14,7 @@ import {
 } from '../engine/scoring'
 import { createTargets } from '../engine/targetFactory'
 import { updateTargets } from '../engine/targetMovement'
+import { createZoneUseCounts } from '../engine/spawnZones'
 import type { Bounds, GameState, MovingTarget } from '../types'
 
 type UseMovingTargetGameParams = {
@@ -30,6 +31,10 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const wrongClicksRef = useRef(0)
   const totalResponseTimeRef = useRef(0)
   const startTimeRef = useRef<number | null>(null)
+
+  const spawnIndexRef = useRef(0)
+  const previousZoneIdRef = useRef<number | null>(null)
+  const zoneUseCountsRef = useRef(createZoneUseCounts())
 
   const [gameState, setGameState] = useState<GameState>('ready')
   const [targets, setTargets] = useState<MovingTarget[]>([])
@@ -123,6 +128,10 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     startTimeRef.current = null
     targetsRef.current = []
 
+    spawnIndexRef.current = 0
+    previousZoneIdRef.current = null
+    zoneUseCountsRef.current = createZoneUseCounts()
+
     setHits(0)
     setMisses(0)
     setWrongClicks(0)
@@ -161,7 +170,24 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   function spawnTargets(currentHits: number, now = performance.now()) {
     const bounds = getPlayAreaBounds()
     const difficulty = getDifficulty(currentHits)
-    const nextTargets = createTargets(difficulty, bounds, now)
+
+    const nextTargets = createTargets({
+      difficulty,
+      bounds,
+      now,
+      spawnIndex: spawnIndexRef.current,
+      previousZoneId: previousZoneIdRef.current,
+      zoneUseCounts: zoneUseCountsRef.current,
+    })
+
+    spawnIndexRef.current += 1
+
+    const correctTarget = nextTargets.find((target) => target.isCorrect)
+
+    if (correctTarget) {
+      previousZoneIdRef.current = correctTarget.zoneId
+      zoneUseCountsRef.current[correctTarget.zoneId] += 1
+    }
 
     targetsRef.current = nextTargets
     setTargets(nextTargets)

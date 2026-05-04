@@ -7,6 +7,11 @@ export type Bounds = {
   height: number
 }
 
+export type Point = {
+  x: number
+  y: number
+}
+
 export type Difficulty = {
   size: number
   speed: number
@@ -28,6 +33,7 @@ export type MovingTarget = {
   isCorrect: boolean
   pattern: MovementPattern
   nextTurnAt: number
+  zoneId: number
 }
 
 export type MovingTargetStats = {

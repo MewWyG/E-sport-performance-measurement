@@ -2,46 +2,68 @@ import { TOTAL_TARGETS } from '../config'
 import type { Difficulty } from '../types'
 
 export function getDifficulty(hitCount: number): Difficulty {
-  const progress = Math.min(hitCount / (TOTAL_TARGETS - 1), 1)
+  const targetNumber = hitCount + 1
 
-  if (hitCount < 10) {
+  if (targetNumber <= 10) {
     return {
-      size: 72 - progress * 10,
-      speed: 0.08,
-      lifetime: 2300,
+      size: 76,
+      speed: 0.07,
+      lifetime: 2500,
       decoyCount: 0,
       pattern: 'straight',
       label: 'พื้นฐาน',
     }
   }
 
-  if (hitCount < 20) {
+  if (targetNumber <= 20) {
     return {
-      size: 58 - progress * 16,
+      size: 72,
       speed: 0.13,
-      lifetime: 1850,
+      lifetime: 2150,
       decoyCount: 0,
       pattern: 'bounce',
-      label: 'ปานกลาง',
+      label: 'เร็วขึ้น',
     }
   }
 
-  if (hitCount < 26) {
+  if (targetNumber <= 25) {
     return {
-      size: 46 - progress * 10,
+      size: 48,
       speed: 0.17,
-      lifetime: 1500,
+      lifetime: 1700,
+      decoyCount: 0,
+      pattern: targetNumber % 2 === 0 ? 'bounce' : 'random',
+      label: 'แม่นยำ',
+    }
+  }
+
+  if (targetNumber <= 35) {
+    return {
+      size: 48,
+      speed: 0.17,
+      lifetime: 1650,
       decoyCount: 1,
       pattern: 'bounce',
-      label: 'ยาก',
+      label: 'เป้าหลอก 1',
+    }
+  }
+
+  if (targetNumber <= 45) {
+    return {
+      size: 42,
+      speed: 0.19,
+      lifetime: 1500,
+      decoyCount: 2,
+      pattern: 'random',
+      label: 'เป้าหลอก 2',
     }
   }
 
   return {
     size: 38,
-    speed: 0.22,
-    lifetime: 1250,
-    decoyCount: 2,
+    speed: 0.21,
+    lifetime: 1350,
+    decoyCount: 3,
     pattern: 'random',
     label: 'ท้าทาย',
   }

@@ -1,32 +1,79 @@
-import type { Bounds, Difficulty, MovingTarget } from '../types'
-import { randomBetween } from '../utils/random'
+import type { Bounds, Difficulty, MovingTarget, Point } from '../types'
+import {
+  isFarEnoughFromCorrectTarget,
+  pickDecoyZones,
+  pickNextTargetZone,
+  pickPointInZone,
+} from './spawnZones'
 
-export function createTargets(
-  difficulty: Difficulty,
-  bounds: Bounds,
-  now: number,
-): MovingTarget[] {
+type CreateTargetsParams = {
+  difficulty: Difficulty
+  bounds: Bounds
+  now: number
+  spawnIndex: number
+  previousZoneId: number | null
+  zoneUseCounts: number[]
+}
+
+export function createTargets({
+  difficulty,
+  bounds,
+  now,
+  spawnIndex,
+  previousZoneId,
+  zoneUseCounts,
+}: CreateTargetsParams): MovingTarget[] {
+  const correctZoneId = pickNextTargetZone(previousZoneId, zoneUseCounts)
+  const correctPosition = pickPointInZone(
+    bounds,
+    difficulty.size,
+    correctZoneId,
+  )
+
   const targets: MovingTarget[] = [
     createTarget({
-      id: `correct-${now}`,
+      id: `correct-${spawnIndex}`,
+      position: correctPosition,
+      zoneId: correctZoneId,
       isCorrect: true,
       difficulty,
-      bounds,
       now,
     }),
   ]
 
+  const decoyZones = pickDecoyZones(
+    correctZoneId,
+    difficulty.decoyCount,
+    zoneUseCounts,
+  )
+
   for (let i = 0; i < difficulty.decoyCount; i += 1) {
+    const decoySize = Math.max(difficulty.size * 0.9, 28)
+    const decoyZoneId = decoyZones[i]
+
+    let decoyPosition = pickPointInZone(bounds, decoySize, decoyZoneId)
+
+    let attempt = 0
+
+    while (
+      !isFarEnoughFromCorrectTarget(decoyPosition, correctPosition) &&
+      attempt < 20
+    ) {
+      decoyPosition = pickPointInZone(bounds, decoySize, decoyZoneId)
+      attempt += 1
+    }
+
     targets.push(
       createTarget({
-        id: `decoy-${i}-${now}`,
+        id: `decoy-${spawnIndex}-${i}`,
+        position: decoyPosition,
+        zoneId: decoyZoneId,
         isCorrect: false,
         difficulty: {
           ...difficulty,
-          size: Math.max(difficulty.size * 0.9, 28),
+          size: decoySize,
           speed: difficulty.speed * 0.85,
         },
-        bounds,
         now,
       }),
     )
@@ -37,40 +84,45 @@ export function createTargets(
 
 type CreateTargetParams = {
   id: string
+  position: Point
+  zoneId: number
   isCorrect: boolean
   difficulty: Difficulty
-  bounds: Bounds
   now: number
 }
 
 function createTarget({
   id,
+  position,
+  zoneId,
   isCorrect,
   difficulty,
-  bounds,
   now,
 }: CreateTargetParams): MovingTarget {
-  const safeSize = Math.max(difficulty.size, 28)
-  const halfSize = safeSize / 2
-
-  const x = randomBetween(halfSize + 8, bounds.width - halfSize - 8)
-  const y = randomBetween(halfSize + 8, bounds.height - halfSize - 8)
-
   const angle = Math.random() * Math.PI * 2
   const speedMultiplier = isCorrect ? 1 : 0.8
   const speed = difficulty.speed * speedMultiplier
 
   return {
     id,
-    x,
-    y,
+    x: position.x,
+    y: position.y,
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed,
-    size: safeSize,
+    size: Math.max(difficulty.size, 28),
     bornAt: now,
     lifetime: difficulty.lifetime,
     isCorrect,
     pattern: difficulty.pattern,
     nextTurnAt: now + randomBetween(450, 850),
+    zoneId,
   }
+}
+
+function randomBetween(min: number, max: number) {
+  if (max <= min) {
+    return min
+  }
+
+  return Math.random() * (max - min) + min
 }
