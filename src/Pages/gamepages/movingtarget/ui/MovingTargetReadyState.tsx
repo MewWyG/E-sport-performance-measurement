@@ -20,12 +20,17 @@ export function MovingTargetReadyState({
       </h1>
 
       <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-sp-text-muted">
-        คลิกเป้าหมายที่เคลื่อนที่ให้ครบ {TOTAL_TARGETS} เป้า
-        ระดับความยากจะเพิ่มขึ้นเรื่อย ๆ ทั้งความเร็ว ขนาดเป้า
-        และเป้าหมายหลอก
+        เกมจะมีเป้าหมายจริงเกิดทั้งหมด {TOTAL_TARGETS} เป้า
+        พยายามคลิกเป้าหมายจริงให้โดนมากที่สุดก่อนที่เป้าจะหายไป
       </p>
 
-      <AppButton onClick={onStart} className="px-12 py-5 text-xl">
+      <AppButton
+        onClick={(event) => {
+          event.stopPropagation()
+          onStart()
+        }}
+        className="px-12 py-5 text-xl"
+      >
         เริ่มเล่น
       </AppButton>
     </div>

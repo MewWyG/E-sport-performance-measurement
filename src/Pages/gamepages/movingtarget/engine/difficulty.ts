@@ -1,8 +1,7 @@
-import { TOTAL_TARGETS } from '../config'
 import type { Difficulty } from '../types'
 
-export function getDifficulty(hitCount: number): Difficulty {
-  const targetNumber = hitCount + 1
+export function getDifficulty(spawnedCount: number): Difficulty {
+  const targetNumber = spawnedCount + 1
 
   if (targetNumber <= 10) {
     return {

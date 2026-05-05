@@ -62,8 +62,8 @@ export function updateTargets(
 
     return {
       ...target,
-      x: resolved.x,
-      y: resolved.y,
+      x: clamp(resolved.x, halfSize, bounds.width - halfSize),
+      y: clamp(resolved.y, halfSize, bounds.height - halfSize),
       vx: resolved.vx,
       vy: resolved.vy,
       nextTurnAt,
@@ -71,4 +71,8 @@ export function updateTargets(
   })
 
   return separateOverlappingTargets(movedTargets, bounds)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
 }
