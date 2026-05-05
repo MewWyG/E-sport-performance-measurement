@@ -36,7 +36,13 @@ export function MovingTargetPlayArea({
   return (
     <div
       ref={areaRef}
-      onClick={onAreaClick}
+      onClick={() => {
+        if (gameState !== 'running') {
+          return
+        }
+
+        onAreaClick()
+      }}
       className="sp-game-grid-bg relative flex min-h-[520px] cursor-crosshair select-none items-center justify-center overflow-hidden rounded-sp-card border-2 border-sp-border p-8 text-center shadow-2xl"
     >
       {gameState === 'ready' && (

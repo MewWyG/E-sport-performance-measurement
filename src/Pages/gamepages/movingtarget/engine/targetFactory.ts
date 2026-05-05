@@ -1,4 +1,5 @@
 import type { Bounds, Difficulty, MovingTarget, Point } from '../types'
+import { randomBetween } from '../utils/random'
 import {
   isFarEnoughFromCorrectTarget,
   pickDecoyZones,
@@ -24,6 +25,7 @@ export function createTargets({
   zoneUseCounts,
 }: CreateTargetsParams): MovingTarget[] {
   const correctZoneId = pickNextTargetZone(previousZoneId, zoneUseCounts)
+
   const correctPosition = pickPointInZone(
     bounds,
     difficulty.size,
@@ -52,7 +54,6 @@ export function createTargets({
     const decoyZoneId = decoyZones[i]
 
     let decoyPosition = pickPointInZone(bounds, decoySize, decoyZoneId)
-
     let attempt = 0
 
     while (
@@ -117,12 +118,4 @@ function createTarget({
     nextTurnAt: now + randomBetween(450, 850),
     zoneId,
   }
-}
-
-function randomBetween(min: number, max: number) {
-  if (max <= min) {
-    return min
-  }
-
-  return Math.random() * (max - min) + min
 }

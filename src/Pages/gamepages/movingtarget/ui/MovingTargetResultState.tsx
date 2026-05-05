@@ -1,6 +1,7 @@
 import { AppButton } from '../../../../components/common/AppButton'
 import type { MovingTargetStats } from '../types'
 import { formatTime } from '../utils/format'
+import { TOTAL_TARGETS } from '../config'
 
 type MovingTargetResultStateProps = {
   stats: MovingTargetStats
@@ -48,7 +49,7 @@ export function MovingTargetResultState({
 
         <ResultBox
           label="เป้าจริง"
-          value={`${stats.spawnedTargetCount}/50`}
+          value={`${stats.spawnedTargetCount}/${TOTAL_TARGETS}`}
         />
 
         <ResultBox
