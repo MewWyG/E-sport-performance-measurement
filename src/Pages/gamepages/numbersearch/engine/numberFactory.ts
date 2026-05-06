@@ -1,0 +1,56 @@
+export function createNumberSet(numberPoolMax: number, playCount: number) {
+  const safeNumberPoolMax = Math.max(Math.floor(numberPoolMax), 1)
+  const safePlayCount = Math.min(
+    Math.max(Math.floor(playCount), 1),
+    safeNumberPoolMax,
+  )
+
+  const buckets = createNumberBuckets(safeNumberPoolMax, safePlayCount)
+
+  const selectedNumbers = buckets.map((bucket) => {
+    const randomIndex = Math.floor(Math.random() * bucket.length)
+
+    return bucket[randomIndex]
+  })
+
+  return selectedNumbers.sort((a, b) => a - b)
+}
+
+function createNumberBuckets(numberPoolMax: number, bucketCount: number) {
+  const buckets: number[][] = []
+
+  for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex += 1) {
+    const start =
+      Math.floor((bucketIndex * numberPoolMax) / bucketCount) + 1
+
+    const end = Math.floor(
+      ((bucketIndex + 1) * numberPoolMax) / bucketCount,
+    )
+
+    const bucket: number[] = []
+
+    for (let value = start; value <= end; value += 1) {
+      bucket.push(value)
+    }
+
+    if (bucket.length > 0) {
+      buckets.push(bucket)
+    }
+  }
+
+  return buckets
+}
+
+export function shuffleArray<T>(items: T[]) {
+  const result = [...items]
+
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const randomIndex = Math.floor(Math.random() * (i + 1))
+    const temp = result[i]
+
+    result[i] = result[randomIndex]
+    result[randomIndex] = temp
+  }
+
+  return result
+}

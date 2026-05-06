@@ -32,11 +32,11 @@ const games = [
     id: 'number-search',
     title: 'ตามหาตัวเลข',
     description:
-      'ทดสอบความเร็วในการมองหาเป้าหมายและประมวลผลในการทำตามลำดับอย่างถูกต้อง',
+      'คลิกตัวเลขเรียงจากน้อยไปมาก เล่นไปเรื่อย ๆ เป็น Level และพยายามอย่ากดผิดครบ 3 ครั้ง',
     icon: '🔢',
     iconClassName: 'bg-sp-info-soft text-sp-info',
-    path: '',
-    isAvailable: false,
+    path: '/gameinfo/numbersearch',
+    isAvailable: true,
   },
   {
     id: 'dual-task',
