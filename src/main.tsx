@@ -18,6 +18,10 @@ import SpeedLogicGamePage from './Pages/gamepages/speedlogic/speedLogic'
 import SpeedLogicResultPage from './Pages/gamepages/speedlogic/speedLogicResult'
 import ContinuousTrackingGamePage from './Pages/gamepages/continuous_tracking/ContinuousTrackingGame'
 import PredictionInterceptGamePage from './Pages/gamepages/prediction_intercept/PredictionInterceptGame'
+
+import { NumberSearchInfoPage } from './Pages/gameinfo/numbersearch_info/numberSearch_info'
+import NumberSearchGamePage from './Pages/gamepages/numbersearch/numberSearch'
+
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -42,6 +46,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/gameinfo/speedlogic" element={<SpeedLogicInfoPage />} />
         <Route path="/gameplay/speedlogic" element={<SpeedLogicGamePage />} />
         <Route path="/gameplay/speedlogic/result" element={<SpeedLogicResultPage />} />
+
+        <Route path="/gameinfo/numbersearch" element={<NumberSearchInfoPage />} />
+        <Route path="/gameplay/numbersearch" element={<NumberSearchGamePage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,
