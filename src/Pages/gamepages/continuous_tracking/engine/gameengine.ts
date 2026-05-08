@@ -1,713 +1,441 @@
-import { CONFIG } from "../config";
-import type { Bounds, MotionSegment, Pattern, PointerState, ScoreResults, SeedMode, TargetState } from "../types";
-import { clamp } from "../utils/math";
-import { SeededRNG } from "../utils/rng";
-import { CustomPathManager } from "./CustomPathManager";
-import { getVelocityAt } from "./MotionProfile";
-import { PathGenerator } from "./PathGenerator";
-import { ScoringTracker } from "./Scoring";
-import { TrialManager, TrialState } from "./TrialManager";
-import type { HUD } from "../ui/HUD";
+import { CONTINUOUS_TRACKING_CONFIG } from '../config'
+import type {
+  ContinuousTrackingMetrics,
+  Difficulty,
+  EngineCallbacks,
+  EngineStartOptions,
+  EngineUpdate,
+  MovementSegment,
+  Point,
+  TrialState,
+} from '../types'
+import { getSegmentPosition, isSegmentFinished } from './MotionProfile'
+import {
+  createInitialTargetPosition,
+  generateNextSegment,
+  SeededRNG,
+} from './PathGenerator'
+import {
+  calculateCenterScore,
+  calculateMetrics,
+  type ScoreSample,
+} from './Scoring'
 
-export class GameEngine {
-  canvas: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
-  hud: HUD;
-  overlay: HTMLElement;
-  bounds: Bounds;
-  pointer: PointerState;
-  target: TargetState;
-  trial: TrialManager | null;
-  scoring: ScoringTracker;
-  schedule: MotionSegment[];
-  currentSegmentIndex: number;
-  currentSegmentElapsed: number;
-  lastTimestamp: number;
-  rafId: number | null;
-  results: ScoreResults | null;
-  currentSeed: number | null;
-  currentSeedMode: SeedMode;
-  isPointerLocked: boolean;
-  unlockRequestedBySystem: boolean;
-  currentPattern: Pattern;
-  previewPattern: Pattern;
-  customPathManager: CustomPathManager | null;
-  customPathDistance: number;
-  rng: SeededRNG | null;
-  pathGenerator: PathGenerator | null;
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
 
-  constructor(canvas: HTMLCanvasElement, hud: HUD, overlay: HTMLElement) {
-    this.canvas = canvas;
-    const ctx = canvas.getContext("2d");
+function generateInternalSeed(): number {
+  return Math.floor(Math.random() * 2147483647) + 1
+}
+
+export class ContinuousTrackingEngine {
+  private canvas: HTMLCanvasElement
+  private ctx: CanvasRenderingContext2D
+  private callbacks: EngineCallbacks
+
+  private rng: SeededRNG
+  private difficulty: Difficulty
+  private durationSec: number
+  private state: TrialState
+
+  private target: Point
+  private cursor: Point
+
+  private segment: MovementSegment | null
+  private previousAngle: number | null
+  private segmentStartTime: number
+  private startTime: number
+  private lastFrameTime: number
+  private frameId: number | null
+  private samples: ScoreSample[]
+  private metrics: ContinuousTrackingMetrics | null
+  private liveAccuracy: number
+
+  private handleDocumentMouseMove: (e: MouseEvent) => void
+  private handlePointerLockChange: () => void
+
+  constructor(canvas: HTMLCanvasElement, callbacks: EngineCallbacks = {}) {
+    this.canvas = canvas
+
+    const ctx = canvas.getContext('2d')
     if (!ctx) {
-      throw new Error("Canvas 2D context is not available");
+      throw new Error('Cannot get 2D context from canvas')
     }
-    this.ctx = ctx;
-    this.hud = hud;
-    this.overlay = overlay;
 
-    this.bounds = {
-      minX: CONFIG.canvas.margin + CONFIG.target.radius,
-      maxX: CONFIG.canvas.width - CONFIG.canvas.margin - CONFIG.target.radius,
-      minY: CONFIG.canvas.margin + CONFIG.target.radius,
-      maxY: CONFIG.canvas.height - CONFIG.canvas.margin - CONFIG.target.radius
-    };
+    this.ctx = ctx
+    this.callbacks = callbacks
 
-    this.pointer = {
-      x: CONFIG.canvas.width / 2,
-      y: CONFIG.canvas.height / 2,
-      inside: false,
-      sensitivity: CONFIG.input.defaultSensitivity,
-      rawLastX: null,
-      rawLastY: null
-    };
+    this.rng = new SeededRNG()
+    this.difficulty = 'normal'
+    this.durationSec = 30
+    this.state = 'idle'
 
     this.target = {
-      x: CONFIG.canvas.width / 2,
-      y: CONFIG.canvas.height / 2,
-      vx: 0,
-      vy: 0
-    };
-
-    this.trial = null;
-    this.scoring = new ScoringTracker();
-    this.schedule = [];
-    this.currentSegmentIndex = 0;
-    this.currentSegmentElapsed = 0;
-    this.lastTimestamp = 0;
-    this.rafId = null;
-    this.results = null;
-    this.currentSeed = null;
-    this.currentSeedMode = "random";
-    this.isPointerLocked = false;
-    this.unlockRequestedBySystem = false;
-
-    this.currentPattern = "mixed";
-    this.previewPattern = "mixed";
-    this.customPathManager = null;
-    this.customPathDistance = 0;
-    this.rng = null;
-    this.pathGenerator = null;
-
-    this.bindInput();
-    this.render();
-  }
-
-  bindInput(): void {
-    document.addEventListener("pointerlockchange", () => {
-      const wasLocked = this.isPointerLocked;
-      this.isPointerLocked = document.pointerLockElement === this.canvas;
-
-      this.canvas.classList.toggle("locked", this.isPointerLocked);
-
-      if (!this.isPointerLocked) {
-        this.pointer.rawLastX = null;
-        this.pointer.rawLastY = null;
-        this.pointer.inside = false;
-
-        const isActiveTrial =
-          this.trial &&
-          (this.trial.state === TrialState.COUNTDOWN ||
-            this.trial.state === TrialState.RUNNING);
-
-        if (wasLocked && isActiveTrial && !this.unlockRequestedBySystem) {
-          this.forceFinishFromEscape();
-        }
-
-        this.unlockRequestedBySystem = false;
-      } else {
-        this.pointer.inside = true;
-      }
-    });
-
-    document.addEventListener("mousemove", (e: MouseEvent) => {
-      if (!this.isPointerLocked) return;
-
-      this.pointer.x += e.movementX * this.pointer.sensitivity;
-      this.pointer.y += e.movementY * this.pointer.sensitivity;
-
-      this.pointer.x = clamp(this.pointer.x, 0, CONFIG.canvas.width);
-      this.pointer.y = clamp(this.pointer.y, 0, CONFIG.canvas.height);
-      this.pointer.inside = true;
-    });
-
-    this.canvas.addEventListener("mouseenter", (e: MouseEvent) => {
-      if (this.isPointerLocked) return;
-
-      const { x, y } = this.getCanvasPoint(e);
-      this.pointer.x = x;
-      this.pointer.y = y;
-      this.pointer.rawLastX = x;
-      this.pointer.rawLastY = y;
-      this.pointer.inside = true;
-    });
-
-    this.canvas.addEventListener("mousemove", (e: MouseEvent) => {
-      if (this.isPointerLocked) return;
-
-      const { x: rawX, y: rawY } = this.getCanvasPoint(e);
-
-      this.pointer.x = rawX;
-      this.pointer.y = rawY;
-      this.pointer.rawLastX = rawX;
-      this.pointer.rawLastY = rawY;
-      this.pointer.inside = true;
-    });
-
-    this.canvas.addEventListener("mouseleave", () => {
-      if (this.isPointerLocked) return;
-
-      this.pointer.inside = false;
-      this.pointer.rawLastX = null;
-      this.pointer.rawLastY = null;
-    });
-  }
-
-  getCanvasPoint(e: MouseEvent): { x: number; y: number } {
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
-
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
-    };
-  }
-
-  requestPointerLock(): void {
-    if (this.canvas.requestPointerLock) {
-      this.canvas.requestPointerLock();
+      x: CONTINUOUS_TRACKING_CONFIG.canvas.width / 2,
+      y: CONTINUOUS_TRACKING_CONFIG.canvas.height / 2,
     }
-  }
 
-  exitPointerLock(): void {
-    if (document.pointerLockElement) {
-      this.unlockRequestedBySystem = true;
-      document.exitPointerLock();
+    this.cursor = {
+      x: CONTINUOUS_TRACKING_CONFIG.canvas.width / 2,
+      y: CONTINUOUS_TRACKING_CONFIG.canvas.height / 2,
     }
-  }
 
-  setPreviewPattern(pattern: Pattern, customPathManager: CustomPathManager | null = null): void {
-    this.previewPattern = pattern;
-    this.customPathManager = customPathManager;
+    this.segment = null
+    this.previousAngle = null
+    this.segmentStartTime = 0
+    this.startTime = 0
+    this.lastFrameTime = 0
+    this.frameId = null
+    this.samples = []
+    this.metrics = null
+    this.liveAccuracy = 0
 
-    const isRunning =
-      this.trial &&
-      (this.trial.state === TrialState.COUNTDOWN ||
-        this.trial.state === TrialState.RUNNING);
+    this.handleDocumentMouseMove = (e: MouseEvent) => {
+      this.handlePointerMove(e)
+    }
 
-    if (!isRunning) {
+    this.handlePointerLockChange = () => {
       if (
-        pattern === "custom" &&
-        customPathManager &&
-        customPathManager.hasValidPath()
+        this.state === 'running' &&
+        document.pointerLockElement !== this.canvas
       ) {
-        const firstPoint = customPathManager.getRenderPoints()[0];
-        this.target.x = firstPoint.x;
-        this.target.y = firstPoint.y;
-      } else {
-        this.target.x = CONFIG.canvas.width / 2;
-        this.target.y = CONFIG.canvas.height / 2;
+        this.finish()
       }
-
-      this.target.vx = 0;
-      this.target.vy = 0;
     }
 
-    this.render();
+    document.addEventListener('mousemove', this.handleDocumentMouseMove)
+    document.addEventListener('pointerlockchange', this.handlePointerLockChange)
+
+    this.renderStatic()
   }
 
-  resetForPatternChange(pattern: Pattern, customPathManager: CustomPathManager | null = null): void {
-    this.stop();
-    this.exitPointerLock();
+  dispose(): void {
+    this.stopLoop()
 
-    this.results = null;
-    this.currentSeed = null;
-    this.currentSeedMode = "random";
-    this.currentPattern = pattern;
-    this.previewPattern = pattern;
-    this.customPathManager = customPathManager;
-    this.customPathDistance = 0;
+    document.removeEventListener('mousemove', this.handleDocumentMouseMove)
+    document.removeEventListener(
+      'pointerlockchange',
+      this.handlePointerLockChange,
+    )
 
-    this.trial = new TrialManager(
-      CONFIG.trial.defaultDurationSec,
-      CONFIG.trial.preCountdownSec
-    );
-    this.trial.reset();
-    this.scoring.reset();
-
-    this.schedule = [];
-    this.currentSegmentIndex = 0;
-    this.currentSegmentElapsed = 0;
-
-    this.pointer.x = CONFIG.canvas.width / 2;
-    this.pointer.y = CONFIG.canvas.height / 2;
-    this.pointer.inside = false;
-    this.pointer.rawLastX = null;
-    this.pointer.rawLastY = null;
-
-    if (
-      pattern === "custom" &&
-      customPathManager &&
-      customPathManager.hasValidPath()
-    ) {
-      const firstPoint = customPathManager.getRenderPoints()[0];
-      this.target.x = firstPoint.x;
-      this.target.y = firstPoint.y;
-    } else {
-      this.target.x = CONFIG.canvas.width / 2;
-      this.target.y = CONFIG.canvas.height / 2;
+    if (document.pointerLockElement === this.canvas) {
+      document.exitPointerLock()
     }
-
-    this.target.vx = 0;
-    this.target.vy = 0;
-
-    this.hud.render({
-      state: TrialState.IDLE,
-      timeLeft: 0,
-      metrics: null,
-      seedInfo: "-",
-      seedMode: "random"
-    });
-
-    this.hideOverlay();
-    this.render();
   }
 
-  start({
-    durationSec,
-    seed,
-    pattern,
-    seedMode = "random",
-    customPathManager = null
-  }: {
-    durationSec: number;
-    seed: number;
-    pattern: Pattern;
-    seedMode?: SeedMode;
-    customPathManager?: CustomPathManager | null;
-  }): void {
-    this.stop();
-
-    this.currentSeed = Number(seed) || 1;
-    this.currentSeedMode = seedMode;
-    this.currentPattern = pattern;
-    this.previewPattern = pattern;
-    this.customPathManager = customPathManager;
-    this.customPathDistance = 0;
-
-    this.rng = new SeededRNG(this.currentSeed);
-    this.pathGenerator = new PathGenerator(this.rng);
-
-    if (pattern !== "custom") {
-      this.schedule = this.pathGenerator.createSchedule(durationSec, pattern);
-    } else {
-      this.schedule = [];
-    }
-
-    this.currentSegmentIndex = 0;
-    this.currentSegmentElapsed = 0;
-
-    this.target.x = CONFIG.canvas.width / 2;
-    this.target.y = CONFIG.canvas.height / 2;
-    this.target.vx = 0;
-    this.target.vy = 0;
-
-    if (
-      pattern === "custom" &&
-      this.customPathManager &&
-      this.customPathManager.hasValidPath()
-    ) {
-      const firstPoint = this.customPathManager.getRenderPoints()[0];
-      this.target.x = firstPoint.x;
-      this.target.y = firstPoint.y;
-    }
-
-    this.pointer.x = CONFIG.canvas.width / 2;
-    this.pointer.y = CONFIG.canvas.height / 2;
-    this.pointer.rawLastX = null;
-    this.pointer.rawLastY = null;
-    this.pointer.inside = true;
-
-    this.scoring.reset();
-    this.results = null;
-
-    this.trial = new TrialManager(durationSec, CONFIG.trial.preCountdownSec);
-    this.trial.startCountdown();
-
-    this.lastTimestamp = performance.now();
-
-    this.hud.render({
-      state: this.trial.state,
-      timeLeft: 0,
-      metrics: null,
-      seedInfo: this.currentSeed,
-      seedMode: this.currentSeedMode
-    });
-
-    this.render();
-    this.loop(this.lastTimestamp);
+  setCallbacks(callbacks: EngineCallbacks): void {
+    this.callbacks = callbacks
   }
 
-  stop(): void {
-    if (this.rafId) cancelAnimationFrame(this.rafId);
-    this.rafId = null;
+  setCursorFromClientPoint(clientX: number, clientY: number): void {
+    if (document.pointerLockElement === this.canvas) return
+
+    const rect = this.canvas.getBoundingClientRect()
+    const scaleX = this.canvas.width / rect.width
+    const scaleY = this.canvas.height / rect.height
+
+    this.cursor = {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    }
+
+    if (this.state !== 'running') {
+      this.renderStatic()
+    }
+  }
+
+  start(options: EngineStartOptions): void {
+    this.stopLoop()
+
+    this.difficulty = options.difficulty
+    this.durationSec = options.durationSec
+    this.state = 'running'
+
+    const internalSeed = generateInternalSeed()
+    this.rng = new SeededRNG(internalSeed)
+
+    this.target = createInitialTargetPosition(this.rng)
+    this.cursor = {
+      x: this.target.x,
+      y: this.target.y,
+    }
+
+    this.segment = null
+    this.previousAngle = null
+    this.samples = []
+    this.metrics = null
+    this.liveAccuracy = 0
+    this.lastFrameTime = 0
+
+    const now = performance.now()
+    this.startTime = now
+    this.createNewSegment(now)
+
+    this.canvas.requestPointerLock?.()
+
+    this.emitUpdate(this.durationSec)
+    this.frameId = requestAnimationFrame((timestamp) =>
+      this.renderFrame(timestamp),
+    )
   }
 
   reset(): void {
-    this.stop();
-    this.exitPointerLock();
+    this.stopLoop()
 
-    this.results = null;
-    this.currentSeed = null;
-    this.currentSeedMode = "random";
-    this.currentPattern = "mixed";
-    this.previewPattern = "mixed";
-    this.customPathDistance = 0;
+    if (document.pointerLockElement === this.canvas) {
+      document.exitPointerLock()
+    }
 
-    this.trial = new TrialManager(
-      CONFIG.trial.defaultDurationSec,
-      CONFIG.trial.preCountdownSec
-    );
-    this.trial.reset();
-    this.scoring.reset();
+    this.state = 'idle'
+    this.rng = new SeededRNG()
 
-    this.target.x = CONFIG.canvas.width / 2;
-    this.target.y = CONFIG.canvas.height / 2;
-    this.target.vx = 0;
-    this.target.vy = 0;
+    this.target = {
+      x: CONTINUOUS_TRACKING_CONFIG.canvas.width / 2,
+      y: CONTINUOUS_TRACKING_CONFIG.canvas.height / 2,
+    }
 
-    this.pointer.x = CONFIG.canvas.width / 2;
-    this.pointer.y = CONFIG.canvas.height / 2;
-    this.pointer.inside = false;
-    this.pointer.rawLastX = null;
-    this.pointer.rawLastY = null;
+    this.cursor = {
+      x: CONTINUOUS_TRACKING_CONFIG.canvas.width / 2,
+      y: CONTINUOUS_TRACKING_CONFIG.canvas.height / 2,
+    }
 
-    this.schedule = [];
-    this.currentSegmentIndex = 0;
-    this.currentSegmentElapsed = 0;
+    this.segment = null
+    this.previousAngle = null
+    this.samples = []
+    this.metrics = null
+    this.liveAccuracy = 0
+    this.lastFrameTime = 0
 
-    this.hud.render({
-      state: TrialState.IDLE,
-      timeLeft: 0,
-      metrics: null,
-      seedInfo: "-",
-      seedMode: "random"
-    });
-
-    this.hideOverlay();
-    this.render();
+    this.emitUpdate(0)
+    this.renderStatic()
   }
 
-  setSensitivity(value: string | number): void {
-    const numeric = Number(value);
-    if (Number.isNaN(numeric)) return;
+  renderStatic(): void {
+    this.drawGrid()
+    this.drawTarget(this.target)
+    this.drawCursor(this.cursor)
 
-    this.pointer.sensitivity = Math.max(
-      CONFIG.input.minSensitivity,
-      Math.min(CONFIG.input.maxSensitivity, numeric)
-    );
-
-    this.pointer.rawLastX = null;
-    this.pointer.rawLastY = null;
+    this.ctx.save()
+    this.ctx.fillStyle = CONTINUOUS_TRACKING_CONFIG.colors.muted
+    this.ctx.font = 'bold 24px sans-serif'
+    this.ctx.fillText('กดเริ่มทดสอบเพื่อเริ่มเกม', 32, 42)
+    this.ctx.restore()
   }
 
-  getCurrentSeed(): number | null {
-    return this.currentSeed;
-  }
+  private handlePointerMove(e: MouseEvent): void {
+    if (document.pointerLockElement !== this.canvas) return
 
-  forceFinishFromEscape(): void {
-    this.stop();
+    const { width, height } = CONTINUOUS_TRACKING_CONFIG.canvas
 
-    if (!this.trial) return;
-
-    this.trial.finish();
-    this.results = this.scoring.getResults();
-
-    this.hud.render({
-      state: TrialState.FINISHED,
-      timeLeft: 0,
-      metrics: this.results,
-      seedInfo: this.currentSeed ?? "-",
-      seedMode: this.currentSeedMode
-    });
-
-    this.showOverlay("Esc");
-    window.setTimeout(() => {
-      if (this.trial && this.trial.state === TrialState.FINISHED) {
-        this.hideOverlay();
-      }
-    }, 700);
-
-    this.render();
-  }
-
-  loop(timestamp: number): void {
-    const dt = clamp((timestamp - this.lastTimestamp) / 1000, 0, 0.05);
-    this.lastTimestamp = timestamp;
-
-    this.update(dt);
-    this.render();
-
-    if (this.trial && this.trial.state !== TrialState.FINISHED) {
-      this.rafId = requestAnimationFrame((t) => this.loop(t));
-    } else {
-      this.finishRun();
+    this.cursor = {
+      x: clamp(this.cursor.x + e.movementX, 0, width),
+      y: clamp(this.cursor.y + e.movementY, 0, height),
     }
   }
 
-  update(dt: number): void {
-    if (!this.trial) return;
-
-    const prevState = this.trial.state;
-    this.trial.update(dt);
-
-    if (this.trial.state === TrialState.COUNTDOWN) {
-      this.showOverlay(Math.ceil(this.trial.countdownRemaining).toString());
-    } else {
-      this.hideOverlay();
-    }
-
-    if (
-      prevState === TrialState.COUNTDOWN &&
-      this.trial.state === TrialState.RUNNING
-    ) {
-      this.currentSegmentIndex = 0;
-      this.currentSegmentElapsed = 0;
-
-      if (
-        this.currentPattern === "custom" &&
-        this.customPathManager &&
-        this.customPathManager.hasValidPath()
-      ) {
-        const firstPoint = this.customPathManager.getRenderPoints()[0];
-        this.target.x = firstPoint.x;
-        this.target.y = firstPoint.y;
-        this.customPathDistance = 0;
-      }
-    }
-
-    if (this.trial.state === TrialState.RUNNING) {
-      this.updateTarget(dt);
-      this.scoring.update(dt, this.pointer, this.target);
-    }
-
-    this.hud.render({
-      state: this.trial.state,
-      timeLeft:
-        this.trial.state === TrialState.RUNNING ? this.trial.getTimeLeft() : 0,
-      metrics: this.results,
-      seedInfo: this.currentSeed ?? "-",
-      seedMode: this.currentSeedMode
-    });
-  }
-
-  updateTarget(dt: number): void {
-    if (this.currentPattern === "custom" && this.customPathManager?.hasValidPath()) {
-      this.customPathDistance += this.customPathManager.speed * dt;
-
-      const point = this.customPathManager.getPointAtDistance(this.customPathDistance);
-      if (point) {
-        this.target.x = point.x;
-        this.target.y = point.y;
-      }
-      return;
-    }
-
-    const segment = this.schedule[this.currentSegmentIndex];
-    if (!segment) return;
-
-    this.currentSegmentElapsed += dt;
-
-    const velocity = getVelocityAt(segment, this.currentSegmentElapsed, dt);
-    this.target.vx = velocity.x;
-    this.target.vy = velocity.y;
-
-    let nextX = this.target.x + this.target.vx * dt;
-    let nextY = this.target.y + this.target.vy * dt;
-
-    let bouncedX = false;
-    let bouncedY = false;
-
-    if (nextX <= this.bounds.minX) {
-      nextX = this.bounds.minX;
-      bouncedX = true;
-    } else if (nextX >= this.bounds.maxX) {
-      nextX = this.bounds.maxX;
-      bouncedX = true;
-    }
-
-    if (nextY <= this.bounds.minY) {
-      nextY = this.bounds.minY;
-      bouncedY = true;
-    } else if (nextY >= this.bounds.maxY) {
-      nextY = this.bounds.maxY;
-      bouncedY = true;
-    }
-
-    if (bouncedX || bouncedY) {
-      const currentAngle = segment.directionAngle;
-      let dx = Math.cos(currentAngle);
-      let dy = Math.sin(currentAngle);
-
-      if (bouncedX) dx *= -1;
-      if (bouncedY) dy *= -1;
-
-      segment.directionAngle = Math.atan2(dy, dx);
-
-      if (segment.type === "jitter") {
-        segment.jitterHeadingAngle = segment.directionAngle;
-        segment.jitterHeadingTimer = 0;
-      }
-
-      const reflectedVelocity = getVelocityAt(
-        segment,
-        this.currentSegmentElapsed,
-        dt
-      );
-      this.target.vx = reflectedVelocity.x;
-      this.target.vy = reflectedVelocity.y;
-
-      const pushOut = 1.0;
-
-      nextX += this.target.vx * dt * pushOut;
-      nextY += this.target.vy * dt * pushOut;
-
-      nextX = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, nextX));
-      nextY = Math.max(this.bounds.minY, Math.min(this.bounds.maxY, nextY));
-    }
-
-    this.target.x = nextX;
-    this.target.y = nextY;
-
-    if (this.currentSegmentElapsed >= segment.duration) {
-      this.currentSegmentIndex++;
-      this.currentSegmentElapsed = 0;
+  private stopLoop(): void {
+    if (this.frameId !== null) {
+      cancelAnimationFrame(this.frameId)
+      this.frameId = null
     }
   }
 
-  finishRun(): void {
-    if (!this.trial || this.results) return;
-
-    this.results = this.scoring.getResults();
-
-    this.hud.render({
-      state: TrialState.FINISHED,
-      timeLeft: 0,
-      metrics: this.results,
-      seedInfo: this.currentSeed ?? "-",
-      seedMode: this.currentSeedMode
-    });
-
-    this.exitPointerLock();
-    this.render();
-  }
-
-  showOverlay(text: string): void {
-    this.overlay.textContent = text;
-    this.overlay.classList.remove("hidden");
-  }
-
-  hideOverlay(): void {
-    this.overlay.classList.add("hidden");
-  }
-
-  render(): void {
-    const ctx = this.ctx;
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    this.drawArena(ctx);
-    this.drawCustomPath(ctx);
-    this.drawTarget(ctx);
-    this.drawPointer(ctx);
-  }
-
-  drawArena(ctx: CanvasRenderingContext2D): void {
-    ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(
-      CONFIG.canvas.margin,
-      CONFIG.canvas.margin,
-      CONFIG.canvas.width - CONFIG.canvas.margin * 2,
-      CONFIG.canvas.height - CONFIG.canvas.margin * 2
-    );
-    ctx.restore();
-  }
-
-  drawCustomPath(ctx: CanvasRenderingContext2D): void {
-    const shouldShowCustomPath =
-      this.previewPattern === "custom" &&
-      this.customPathManager &&
-      this.customPathManager.points.length >= 2;
-
-    if (!shouldShowCustomPath || !this.customPathManager) return;
-
-    const points = this.customPathManager.getRenderPoints();
-
-    ctx.save();
-    ctx.strokeStyle = "rgba(96, 165, 250, 0.75)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
+  private emitUpdate(timeLeft: number): void {
+    const update: EngineUpdate = {
+      state: this.state,
+      timeLeft,
+      liveAccuracy: this.liveAccuracy,
+      metrics: this.metrics,
     }
 
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(96, 165, 250, 0.95)";
-    ctx.beginPath();
-    ctx.arc(points[0].x, points[0].y, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
+    this.callbacks.onUpdate?.(update)
   }
 
-  drawTarget(ctx: CanvasRenderingContext2D): void {
-    ctx.save();
+  private createNewSegment(now: number): void {
+    const nextSegment = generateNextSegment(
+      this.target,
+      this.previousAngle,
+      this.difficulty,
+      this.rng,
+    )
 
-    ctx.beginPath();
-    ctx.fillStyle = CONFIG.colors.targetRing;
-    ctx.arc(
-      this.target.x,
-      this.target.y,
-      CONFIG.target.visibleRingRadius,
+    this.segment = nextSegment
+    this.segmentStartTime = now
+    this.previousAngle = nextSegment.angle
+  }
+
+  private updateTarget(now: number): void {
+    if (!this.segment) {
+      this.createNewSegment(now)
+      return
+    }
+
+    const elapsed = now - this.segmentStartTime
+
+    this.target = getSegmentPosition(this.segment, elapsed)
+
+    if (isSegmentFinished(this.segment, elapsed)) {
+      this.target = this.segment.end
+      this.createNewSegment(now)
+    }
+  }
+
+  private renderFrame(now: number): void {
+    if (this.state !== 'running') return
+
+    const elapsedSec = (now - this.startTime) / 1000
+    const remaining = Math.max(0, this.durationSec - elapsedSec)
+
+    if (remaining <= 0) {
+      this.finish()
+      return
+    }
+
+    const dt =
+      this.lastFrameTime > 0 ? (now - this.lastFrameTime) / 1000 : 0
+
+    this.lastFrameTime = now
+
+    this.updateTarget(now)
+
+    const difficultyConfig =
+      CONTINUOUS_TRACKING_CONFIG.difficulty[this.difficulty]
+
+    const score = calculateCenterScore(
+      this.cursor,
+      this.target,
+      difficultyConfig.targetRadius,
+    )
+
+    if (dt > 0 && dt < 0.1) {
+      this.samples.push({
+        error: score.error,
+        centerScore: score.centerScore,
+        isOnTarget: score.isOnTarget,
+        dt,
+      })
+
+      const currentMetrics = calculateMetrics(this.samples)
+      this.liveAccuracy = currentMetrics.trackingAccuracy
+    }
+
+    this.drawGrid()
+    this.drawTarget(this.target)
+    this.drawCursor(this.cursor)
+
+    this.emitUpdate(remaining)
+
+    this.frameId = requestAnimationFrame((timestamp) =>
+      this.renderFrame(timestamp),
+    )
+  }
+
+  private finish(): void {
+    if (this.state !== 'running') return
+
+    this.stopLoop()
+
+    if (document.pointerLockElement === this.canvas) {
+      document.exitPointerLock()
+    }
+
+    this.metrics = calculateMetrics(this.samples)
+    this.liveAccuracy = this.metrics.trackingAccuracy
+    this.state = 'finished'
+
+    this.emitUpdate(0)
+    this.callbacks.onFinish?.(this.metrics)
+
+    this.drawGrid()
+    this.drawTarget(this.target)
+    this.drawCursor(this.cursor)
+  }
+
+  private drawGrid(): void {
+    const { width, height, arenaPadding } = CONTINUOUS_TRACKING_CONFIG.canvas
+    const colors = CONTINUOUS_TRACKING_CONFIG.colors
+
+    this.ctx.save()
+
+    this.ctx.fillStyle = colors.background
+    this.ctx.fillRect(0, 0, width, height)
+
+    this.ctx.strokeStyle = colors.grid
+    this.ctx.lineWidth = 1
+
+    for (let x = 0; x <= width; x += 50) {
+      this.ctx.beginPath()
+      this.ctx.moveTo(x, 0)
+      this.ctx.lineTo(x, height)
+      this.ctx.stroke()
+    }
+
+    for (let y = 0; y <= height; y += 50) {
+      this.ctx.beginPath()
+      this.ctx.moveTo(0, y)
+      this.ctx.lineTo(width, y)
+      this.ctx.stroke()
+    }
+
+    this.ctx.strokeStyle = colors.border
+    this.ctx.lineWidth = 2
+    this.ctx.strokeRect(
+      arenaPadding,
+      arenaPadding,
+      width - arenaPadding * 2,
+      height - arenaPadding * 2,
+    )
+
+    this.ctx.restore()
+  }
+
+  private drawTarget(target: Point): void {
+    const colors = CONTINUOUS_TRACKING_CONFIG.colors
+    const radius =
+      CONTINUOUS_TRACKING_CONFIG.difficulty[this.difficulty].targetRadius
+
+    this.ctx.save()
+
+    this.ctx.fillStyle = colors.targetRing
+    this.ctx.beginPath()
+    this.ctx.arc(
+      target.x,
+      target.y,
+      radius + CONTINUOUS_TRACKING_CONFIG.target.visualRingExtra,
       0,
-      Math.PI * 2
-    );
-    ctx.fill();
+      Math.PI * 2,
+    )
+    this.ctx.fill()
 
-    ctx.beginPath();
-    ctx.fillStyle = CONFIG.colors.target;
-    ctx.arc(
-      this.target.x,
-      this.target.y,
-      CONFIG.target.radius,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
+    this.ctx.fillStyle = colors.target
+    this.ctx.beginPath()
+    this.ctx.arc(target.x, target.y, radius, 0, Math.PI * 2)
+    this.ctx.fill()
 
-    ctx.restore();
+    this.ctx.fillStyle = colors.targetCenter
+    this.ctx.beginPath()
+    this.ctx.arc(target.x, target.y, 5, 0, Math.PI * 2)
+    this.ctx.fill()
+
+    this.ctx.restore()
   }
 
-  drawPointer(ctx: CanvasRenderingContext2D): void {
-    if (!this.pointer.inside) return;
+  private drawCursor(cursor: Point): void {
+    const colors = CONTINUOUS_TRACKING_CONFIG.colors
+    const radius = CONTINUOUS_TRACKING_CONFIG.cursor.radius
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = CONFIG.colors.text;
-    ctx.arc(
-      this.pointer.x,
-      this.pointer.y,
-      CONFIG.cursor.radius,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-    ctx.restore();
+    this.ctx.save()
+
+    this.ctx.fillStyle = colors.cursor
+    this.ctx.strokeStyle = colors.cursorStroke
+    this.ctx.lineWidth = 2
+
+    this.ctx.beginPath()
+    this.ctx.arc(cursor.x, cursor.y, radius, 0, Math.PI * 2)
+    this.ctx.fill()
+    this.ctx.stroke()
+
+    this.ctx.restore()
   }
 }

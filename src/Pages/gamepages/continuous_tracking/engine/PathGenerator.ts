@@ -1,132 +1,156 @@
-import { CONFIG } from "../config";
-import type { MotionSegment, MotionTypeValue, Pattern } from "../types";
-import type { SeededRNG } from "../utils/rng";
-import { MotionType, createMotionSegment } from "./MotionProfile";
+import { CONTINUOUS_TRACKING_CONFIG } from '../config'
+import type { Difficulty, MovementSegment, Point } from '../types'
 
-export class PathGenerator {
-  rng: SeededRNG;
-  options: Record<string, unknown>;
+export class SeededRNG {
+  private state: number
 
-  constructor(rng: SeededRNG, options: Record<string, unknown> = {}) {
-    this.rng = rng;
-    this.options = options;
+  constructor(seed = Date.now()) {
+    this.state = seed >>> 0
   }
 
-  createSchedule(durationSec: number, pattern: Pattern = "mixed"): MotionSegment[] {
-    const segments: MotionSegment[] = [];
-    let total = 0;
-
-    while (total < durationSec) {
-      const duration = this.rng.range(
-        CONFIG.motion.segmentDurationRangeSec[0],
-        CONFIG.motion.segmentDurationRangeSec[1]
-      );
-
-      const type = this.pickType(pattern, segments.length);
-      const speed = this.rng.range(
-        CONFIG.motion.baseSpeedPxPerSec,
-        CONFIG.motion.maxSpeedPxPerSec
-      );
-
-      const directionAngle = this.pickDirection(type, segments);
-
-      const segment = createMotionSegment({
-        type,
-        duration: Math.min(duration, durationSec - total),
-        speed,
-        directionAngle,
-
-        amplitude: this.rng.range(
-          CONFIG.motion.sinusoidal.amplitudeRange[0],
-          CONFIG.motion.sinusoidal.amplitudeRange[1]
-        ),
-        frequency: this.rng.range(
-          CONFIG.motion.sinusoidal.frequencyRange[0],
-          CONFIG.motion.sinusoidal.frequencyRange[1]
-        ),
-
-        zigzagTurnInterval: this.rng.range(
-          CONFIG.motion.zigzag.turnIntervalRangeSec[0],
-          CONFIG.motion.zigzag.turnIntervalRangeSec[1]
-        ),
-        zigzagLateralRatio: CONFIG.motion.zigzag.lateralRatio,
-
-        jitterHeadingInterval: this.rng.range(
-          CONFIG.motion.jitter.headingChangeIntervalRangeSec[0],
-          CONFIG.motion.jitter.headingChangeIntervalRangeSec[1]
-        ),
-        jitterMaxHeadingStepDeg: CONFIG.motion.jitter.maxHeadingStepDeg,
-        jitterDriftBlend: CONFIG.motion.jitter.driftBlend,
-
-        rng: this.rng
-      });
-
-      segments.push(segment);
-      total += segment.duration;
-    }
-
-    return segments;
+  next(): number {
+    let t = (this.state += 0x6d2b79f5)
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 
-  pickType(pattern: Pattern, index: number): MotionTypeValue {
-    if (pattern !== "mixed") return pattern as MotionTypeValue;
-
-    const cycle: MotionTypeValue[] = [
-      MotionType.LINEAR,
-      MotionType.SINUSOIDAL,
-      MotionType.ZIGZAG,
-      MotionType.JITTER
-    ];
-
-    return cycle[index % cycle.length];
+  range(min: number, max: number): number {
+    return min + (max - min) * this.next()
   }
 
-  pickDirection(type: MotionTypeValue, segments: MotionSegment[]): number {
-    const right = 0;
-    const down = Math.PI / 2;
-    const left = Math.PI;
-    const up = -Math.PI / 2;
-
-    const axisDirections = [right, down, left, up];
-    const diagonalDirections = [
-      Math.PI / 4,
-      (3 * Math.PI) / 4,
-      (-3 * Math.PI) / 4,
-      -Math.PI / 4
-    ];
-
-    if (type === MotionType.LINEAR) {
-      const base = this.rng.pick(axisDirections.concat(diagonalDirections));
-      const jitter =
-        ((this.rng.next() * 2 - 1) *
-          CONFIG.motion.linear.headingJitterDeg *
-          Math.PI) /
-        180;
-      return base + jitter;
-    }
-
-    if (type === MotionType.ZIGZAG) {
-      return this.rng.pick([right, left, down, up]);
-    }
-
-    if (type === MotionType.SINUSOIDAL) {
-      return this.rng.pick([right, left]);
-    }
-
-    if (type === MotionType.JITTER) {
-      if (segments.length > 0) {
-        const prev = segments[segments.length - 1].directionAngle;
-        const offset = this.rng.pick([
-          Math.PI / 6,
-          -Math.PI / 6,
-          Math.PI / 4,
-          -Math.PI / 4
-        ]);
-        return prev + offset;
-      }
-      return this.rng.range(0, Math.PI * 2);
-    }
-
-    return this.rng.range(0, Math.PI * 2);
+  pick<T>(items: T[]): T {
+    return items[Math.floor(this.next() * items.length)]
   }
+
+  sign(): 1 | -1 {
+    return this.next() < 0.5 ? 1 : -1
+  }
+}
+
+function distance(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+function degToRad(deg: number): number {
+  return (deg * Math.PI) / 180
+}
+
+function getCenterPoint(): Point {
+  const { width, height } = CONTINUOUS_TRACKING_CONFIG.canvas
+
+  return {
+    x: width / 2,
+    y: height / 2,
+  }
+}
+
+function isInsideSafeArea(point: Point, safeMargin: number): boolean {
+  const { width, height } = CONTINUOUS_TRACKING_CONFIG.canvas
+
+  return (
+    point.x >= safeMargin &&
+    point.x <= width - safeMargin &&
+    point.y >= safeMargin &&
+    point.y <= height - safeMargin
+  )
+}
+
+function createSegment(
+  start: Point,
+  angle: number,
+  distancePx: number,
+  speed: number,
+): MovementSegment {
+  const end = {
+    x: start.x + Math.cos(angle) * distancePx,
+    y: start.y + Math.sin(angle) * distancePx,
+  }
+
+  const actualDistance = distance(start, end)
+
+  return {
+    start,
+    end,
+    distance: actualDistance,
+    speed,
+    durationMs: (actualDistance / speed) * 1000,
+    angle,
+  }
+}
+
+function createFallbackSegment(
+  start: Point,
+  difficulty: Difficulty,
+  rng: SeededRNG,
+): MovementSegment {
+  const config = CONTINUOUS_TRACKING_CONFIG.difficulty[difficulty]
+  const center = getCenterPoint()
+  const angleToCenter = Math.atan2(center.y - start.y, center.x - start.x)
+
+  const distanceToCenter = distance(start, center)
+  const desiredDistance = rng.range(
+    config.segmentDistance.min,
+    config.segmentDistance.max,
+  )
+
+  const distancePx = Math.max(
+    40,
+    Math.min(desiredDistance, distanceToCenter * 0.85),
+  )
+
+  const speed = rng.range(config.speed.min, config.speed.max)
+
+  return createSegment(start, angleToCenter, distancePx, speed)
+}
+
+export function createInitialTargetPosition(rng: SeededRNG): Point {
+  const { width, height } = CONTINUOUS_TRACKING_CONFIG.canvas
+
+  return {
+    x: width * 0.5 + rng.range(-80, 80),
+    y: height * 0.5 + rng.range(-60, 60),
+  }
+}
+
+export function generateNextSegment(
+  start: Point,
+  previousAngle: number | null,
+  difficulty: Difficulty,
+  rng: SeededRNG,
+): MovementSegment {
+  const config = CONTINUOUS_TRACKING_CONFIG.difficulty[difficulty]
+  const candidates: MovementSegment[] = []
+
+  for (let i = 0; i < config.candidateCount; i += 1) {
+    const distancePx = rng.range(
+      config.segmentDistance.min,
+      config.segmentDistance.max,
+    )
+
+    const speed = rng.range(config.speed.min, config.speed.max)
+
+    let angle: number
+
+    if (previousAngle === null) {
+      angle = rng.range(0, Math.PI * 2)
+    } else {
+      const minTurn = degToRad(config.turnAngleDeg.min)
+      const maxTurn = degToRad(config.turnAngleDeg.max)
+      const turn = rng.range(minTurn, maxTurn) * rng.sign()
+      angle = previousAngle + turn
+    }
+
+    const segment = createSegment(start, angle, distancePx, speed)
+
+    if (isInsideSafeArea(segment.end, config.safeMargin)) {
+      candidates.push(segment)
+    }
+  }
+
+  if (candidates.length > 0) {
+    return rng.pick(candidates)
+  }
+
+  return createFallbackSegment(start, difficulty, rng)
 }

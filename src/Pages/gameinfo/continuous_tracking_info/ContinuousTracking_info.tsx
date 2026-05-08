@@ -5,24 +5,25 @@ import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
 
 const instructions = [
-  'เป้าหมายสีเขียวจะเคลื่อนที่ต่อเนื่องบนพื้นที่ทดสอบ ผู้เล่นต้องควบคุมจุดเมาส์ให้ตามเป้าให้นานที่สุด',
-  'ไม่ต้องคลิก ใช้การควบคุมเมาส์อย่างเดียว โดยระบบจะล็อกเมาส์ไว้ในพื้นที่ทดสอบระหว่างเล่น',
-  'เลือกรูปแบบการเคลื่อนที่ได้ เช่น Linear, Zig-Zag, Sinusoidal, Random Jitter, Mixed หรือวาดเส้นทางเองด้วย Custom Path',
-  'หลังจบเกม ระบบจะแสดงผล เช่น Time on Target, Mean Error, RMSE และ Max Error',
+  'เลือกระดับความยาก Easy, Normal หรือ Hard และเลือกระยะเวลาที่ต้องการทดสอบ',
+  'เมื่อเริ่มเกม เมาส์จะถูกล็อกไว้ในพื้นที่ทดสอบ และเป้าหมายสีเขียวจะเคลื่อนที่ต่อเนื่อง',
+  'ควบคุม cursor ให้ตามเป้าหมายให้ได้นานที่สุด โดยพยายามให้อยู่ใกล้กึ่งกลางเป้ามากที่สุด',
+  'ระบบจะสุ่มทิศทางและความเร็วแบบมีมาตรฐาน ถ้าทิศทางที่สุ่มจะชนขอบ ระบบจะเลือกทิศทางใหม่แทน',
+  'หลังจบเกม ระบบจะแสดงผล เช่น อยู่บนเป้าหมาย ความแม่นกลางเป้า ระยะพลาดเฉลี่ย และคะแนนรวม',
 ]
 
 const metrics = [
   {
-    label: 'Time on Target',
-    value: 'เปอร์เซ็นต์เวลาที่เคอร์เซอร์อยู่บนเป้าหมาย',
+    label: 'อยู่บนเป้าหมาย',
+    value: 'เปอร์เซ็นต์เวลาที่ cursor อยู่ในวงเป้าหมายสีเขียว',
   },
   {
-    label: 'Mean Error',
-    value: 'ระยะห่างเฉลี่ยระหว่างเคอร์เซอร์กับเป้าหมาย',
+    label: 'ความแม่นกลางเป้า',
+    value: 'คะแนนความใกล้กึ่งกลางเป้า ยิ่งอยู่ใกล้กลางยิ่งสูง',
   },
   {
-    label: 'RMSE',
-    value: 'ค่าความคลาดเคลื่อนที่เน้นการพลาดไกลมากเป็นพิเศษ',
+    label: 'ระยะพลาดเฉลี่ย',
+    value: 'ระยะห่างเฉลี่ยระหว่าง cursor กับจุดกึ่งกลางเป้า',
   },
 ]
 
@@ -69,8 +70,8 @@ export function ContinuousTrackingInfoPage() {
                 </h1>
 
                 <p className="mb-8 text-xl leading-relaxed text-sp-text-muted">
-                  แบบทดสอบการติดตามเป้าหมายต่อเนื่อง ใช้วัดความสามารถในการควบคุมเมาส์ตามวัตถุที่เคลื่อนที่ตลอดเวลา
-                  เหมาะสำหรับประเมิน motor control และ eye-hand coordination
+                  แบบทดสอบการติดตามเป้าหมายต่อเนื่อง ใช้วัดความสามารถในการควบคุมเมาส์ให้ตามเป้าหมายที่เคลื่อนที่ตลอดเวลา
+                  โดยเน้น motor control, eye-hand coordination และความแม่นยำในการควบคุม cursor ให้อยู่ใกล้กึ่งกลางเป้า
                 </p>
 
                 <AppButton
@@ -118,8 +119,8 @@ export function ContinuousTrackingInfoPage() {
 
             <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
               <InfoBox
-                label="ระยะเวลาทดสอบ"
-                value="20 / 30 / 45 / 60 วินาที"
+                label="ระดับความยาก"
+                value="Easy / Normal / Hard"
               />
 
               <InfoBox
@@ -128,8 +129,8 @@ export function ContinuousTrackingInfoPage() {
               />
 
               <InfoBox
-                label="โหมดพิเศษ"
-                value="Custom Path + Copy / Load Path"
+                label="คะแนนรวม"
+                value="คิดจากความใกล้กึ่งกลางเป้าเป็นหลัก"
               />
             </div>
           </div>
