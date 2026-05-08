@@ -1,20 +1,47 @@
-export type GamePhase = 'idle' | 'visible' | 'hidden' | 'feedback' | 'finished'
+export type GamePhase =
+  | 'idle'
+  | 'countdown'
+  | 'observe'
+  | 'wait'
+  | 'clickable'
+  | 'feedback'
+  | 'finished'
 
-export type SeedMode = 'random' | 'fixed'
-
-export type SpeedMode = 'slow' | 'normal' | 'fast'
+export type Difficulty = 'easy' | 'normal' | 'hard'
 
 export type Point = {
   x: number
   y: number
 }
 
+export type DifficultyConfig = {
+  label: string
+  speed: {
+    min: number
+    max: number
+  }
+  observeMs: {
+    min: number
+    max: number
+  }
+  waitMs: {
+    min: number
+    max: number
+  }
+  clickWindowMs: number
+  slopeOptions: number[]
+}
+
 export type TrialConfig = {
   index: number
+
   startAt: number
-  hiddenStartAt: number
-  visibleMs: number
-  occlusionMs: number
+  waitStartAt: number
+  clickableStartAt: number
+
+  observeMs: number
+  waitMs: number
+  clickWindowMs: number
 
   x0: number
   y0: number
@@ -22,6 +49,7 @@ export type TrialConfig = {
   vx: number
   vy: number
 
+  speed: number
   direction: 1 | -1
 }
 
@@ -29,16 +57,16 @@ export type TrialResult = {
   trialIndex: number
 
   predictionError: number
-  timingError: number
+  positionAccuracy: number
+  timingAccuracy: number
+  trialScore: number
 
-  biasX: number
-  biasY: number
-
-  alongBias: number
-  lateralBias: number
+  reactionTimeMs: number | null
 
   click: Point | null
   actual: Point
+
+  responseLabel: string
 }
 
 export type FeedbackState = {
@@ -46,4 +74,16 @@ export type FeedbackState = {
   click: Point | null
   actual: Point | null
   error: number | null
+  trialScore: number | null
+  reactionTimeMs: number | null
+  responseLabel: string
+}
+
+export type PredictionSummary = {
+  totalScore: number
+  meanPredictionError: number
+  positionAccuracy: number
+  timingAccuracy: number
+  meanReactionTimeMs: number
+  completedTrials: number
 }

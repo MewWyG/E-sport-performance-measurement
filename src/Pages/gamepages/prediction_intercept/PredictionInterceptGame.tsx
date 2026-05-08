@@ -4,21 +4,18 @@ import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
 import { PREDICTION_CONFIG } from './config'
 import { PredictionEngine } from './engine/PredictionEngine'
-import { getPathGuidePoints, getTargetPosition } from './engine/PredictionMotion'
 import {
-  calculateTrialResult,
-  createNoResponseResult,
-  getValidResults,
-} from './engine/PredictionScoring'
+  getPathGuidePoints,
+  getTargetPosition,
+} from './engine/PredictionMotion'
+import { calculatePredictionSummary } from './engine/PredictionScoring'
 import type {
-  FeedbackState,
+  Difficulty,
   GamePhase,
   Point,
-  SeedMode,
-  SpeedMode,
+  PredictionSummary,
   TrialResult,
 } from './types'
-import { formatMs, mean } from './utils/math'
 
 function getCanvasPoint(
   canvas: HTMLCanvasElement,
@@ -34,64 +31,11 @@ function getCanvasPoint(
   }
 }
 
-function generateRandomSeed(): number {
-  return Math.floor(Math.random() * PREDICTION_CONFIG.seed.maxRandomSeed) + 1
-}
-
-function getAccuracyFromError(errorPx: number): number {
-  const perfectThreshold = 10
-  const failThreshold = 140
-
-  if (!Number.isFinite(errorPx)) return 0
-  if (errorPx <= perfectThreshold) return 100
-  if (errorPx >= failThreshold) return 0
-
-  return Math.max(
-    0,
-    Math.min(
-      100,
-      100 -
-        ((errorPx - perfectThreshold) / (failThreshold - perfectThreshold)) *
-          100,
-    ),
-  )
-}
-
-function getTimingAccuracyFromError(errorMs: number): number {
-  const perfectThreshold = 80
-  const failThreshold = 700
-
-  if (!Number.isFinite(errorMs)) return 0
-
-  const absError = Math.abs(errorMs)
-
-  if (absError <= perfectThreshold) return 100
-  if (absError >= failThreshold) return 0
-
-  return Math.max(
-    0,
-    Math.min(
-      100,
-      100 -
-        ((absError - perfectThreshold) / (failThreshold - perfectThreshold)) *
-          100,
-    ),
-  )
-}
-
-function getAccuracyLabel(score: number): string {
-  if (score >= 85) return 'แม่นยำมาก'
-  if (score >= 70) return 'ดี'
+function getScoreLabel(score: number): string {
+  if (score >= 85) return 'คาดการณ์ได้ดีมาก'
+  if (score >= 70) return 'คาดการณ์ได้ดี'
   if (score >= 50) return 'พอใช้'
   return 'ควรฝึกเพิ่ม'
-}
-
-function getPredictionBiasLabel(alongBias: number): string {
-  if (!Number.isFinite(alongBias)) return '-'
-
-  if (alongBias > 20) return 'มักคลิกนำหน้าเป้าหมาย'
-  if (alongBias < -20) return 'มักคลิกช้ากว่าเป้าหมาย'
-  return 'คาดการณ์ใกล้ตำแหน่งจริง'
 }
 
 export function PredictionInterceptGamePage() {
@@ -101,70 +45,39 @@ export function PredictionInterceptGamePage() {
   const engineRef = useRef(new PredictionEngine())
 
   const [phase, setPhase] = useState<GamePhase>('idle')
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const [trialCount, setTrialCount] = useState<number>(
     PREDICTION_CONFIG.trial.defaultTrialCount,
   )
   const [currentTrialIndex, setCurrentTrialIndex] = useState(0)
-  const [speedMode, setSpeedMode] = useState<SpeedMode>('normal')
-  const [seedMode, setSeedMode] = useState<SeedMode>('random')
-  const [seedInput, setSeedInput] = useState(
-    String(PREDICTION_CONFIG.seed.defaultSeed),
-  )
-  const [activeSeed, setActiveSeed] = useState<number | null>(null)
-  const [copySeedStatus, setCopySeedStatus] = useState('')
   const [results, setResults] = useState<TrialResult[]>([])
+  const [summary, setSummary] = useState<PredictionSummary | null>(null)
   const [statusText, setStatusText] = useState('กดเริ่มทดสอบเพื่อเริ่มเกม')
   const [countdownValue, setCountdownValue] = useState<number | null>(null)
 
-  const validResults = getValidResults(results)
-
-  const predictionErrors = validResults.map((result) => result.predictionError)
-  const timingErrors = validResults.map((result) => result.timingError)
-  const alongBiasValues = validResults.map((result) => result.alongBias)
-
-  const meanPredictionError = mean(predictionErrors)
-  const meanAbsTimingError = mean(timingErrors.map((value) => Math.abs(value)))
-  const meanAlongBias = mean(alongBiasValues)
-
-  const predictionAccuracy = validResults.length
-    ? getAccuracyFromError(meanPredictionError)
-    : 0
-
-  const timingAccuracy = validResults.length
-    ? getTimingAccuracyFromError(meanAbsTimingError)
-    : 0
-
-  const overallAccuracy = validResults.length
-    ? predictionAccuracy * 0.75 + timingAccuracy * 0.25
-    : 0
-
-  const accuracyLabel = validResults.length
-    ? getAccuracyLabel(overallAccuracy)
-    : ''
-
-  const biasLabel = validResults.length
-    ? getPredictionBiasLabel(meanAlongBias)
-    : '-'
+  const isRunning =
+    countdownValue !== null ||
+    phase === 'observe' ||
+    phase === 'wait' ||
+    phase === 'clickable' ||
+    phase === 'feedback'
 
   const phaseLabel: Record<GamePhase, string> = {
     idle: 'พร้อม',
-    visible: 'กำลังสังเกต',
-    hidden: 'เป้าหมายหายไป',
+    countdown: 'เตรียมพร้อม',
+    observe: 'กำลังสังเกต',
+    wait: 'รอสัญญาณ',
+    clickable: 'คลิกได้',
     feedback: 'เฉลยตำแหน่ง',
     finished: 'เสร็จสิ้น',
   }
-
-  const isRunning =
-    countdownValue !== null ||
-    phase === 'visible' ||
-    phase === 'hidden' ||
-    phase === 'feedback'
 
   function syncFromEngine(): void {
     const engine = engineRef.current
     setPhase(engine.phase)
     setCurrentTrialIndex(engine.currentTrialIndex)
     setResults([...engine.results])
+    setSummary(calculatePredictionSummary(engine.results))
   }
 
   function stopLoop(): void {
@@ -181,12 +94,32 @@ export function PredictionInterceptGamePage() {
     }
   }
 
-  function drawGrid(ctx: CanvasRenderingContext2D): void {
+  function getBackgroundColor(currentPhase: GamePhase): string {
+    if (currentPhase === 'observe') return '#0b3b63'
+    if (currentPhase === 'wait') return '#0b3b63'
+    if (currentPhase === 'clickable') return '#0f4d2f'
+    if (currentPhase === 'feedback') return '#021126'
+    return '#021126'
+  }
+
+  function getArenaBorderColor(currentPhase: GamePhase): string {
+    if (currentPhase === 'observe') return 'rgba(125, 211, 252, 0.75)'
+    if (currentPhase === 'wait') return 'rgba(125, 211, 252, 0.9)'
+    if (currentPhase === 'clickable') return 'rgba(74, 222, 128, 0.95)'
+    if (currentPhase === 'feedback') return 'rgba(203, 213, 225, 0.45)'
+    return 'rgba(203, 213, 225, 0.35)'
+  }
+
+  function drawGrid(
+    ctx: CanvasRenderingContext2D,
+    currentPhase: GamePhase,
+  ): void {
     const { width, height, margin } = PREDICTION_CONFIG.canvas
     const colors = PREDICTION_CONFIG.colors
 
     ctx.save()
-    ctx.fillStyle = colors.background
+
+    ctx.fillStyle = getBackgroundColor(currentPhase)
     ctx.fillRect(0, 0, width, height)
 
     ctx.strokeStyle = colors.grid
@@ -206,9 +139,53 @@ export function PredictionInterceptGamePage() {
       ctx.stroke()
     }
 
-    ctx.strokeStyle = colors.border
-    ctx.lineWidth = 2
+    ctx.strokeStyle = getArenaBorderColor(currentPhase)
+    ctx.lineWidth = currentPhase === 'clickable' ? 5 : 3
     ctx.strokeRect(margin, margin, width - margin * 2, height - margin * 2)
+
+    if (currentPhase === 'clickable') {
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.35)'
+      ctx.lineWidth = 14
+      ctx.strokeRect(margin, margin, width - margin * 2, height - margin * 2)
+    }
+
+    if (currentPhase === 'observe' || currentPhase === 'wait') {
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)'
+      ctx.lineWidth = 14
+      ctx.strokeRect(margin, margin, width - margin * 2, height - margin * 2)
+    }
+
+    ctx.restore()
+  }
+
+  function drawGuidePath(ctx: CanvasRenderingContext2D): void {
+    const trial = engineRef.current.trial
+    if (!trial) return
+
+    const { width, height, margin } = PREDICTION_CONFIG.canvas
+    const totalDuration = trial.observeMs + trial.waitMs + trial.clickWindowMs
+    const points = getPathGuidePoints(trial, totalDuration, 70)
+
+    if (points.length < 2) return
+
+    ctx.save()
+
+    ctx.beginPath()
+    ctx.rect(margin, margin, width - margin * 2, height - margin * 2)
+    ctx.clip()
+
+    ctx.strokeStyle = PREDICTION_CONFIG.colors.pathGuide
+    ctx.lineWidth = 2.5
+    ctx.setLineDash([10, 8])
+
+    ctx.beginPath()
+    ctx.moveTo(points[0].x, points[0].y)
+
+    for (let i = 1; i < points.length; i += 1) {
+      ctx.lineTo(points[i].x, points[i].y)
+    }
+
+    ctx.stroke()
     ctx.restore()
   }
 
@@ -231,33 +208,11 @@ export function PredictionInterceptGamePage() {
     ctx.restore()
   }
 
-  function drawPathGuide(ctx: CanvasRenderingContext2D): void {
-    const trial = engineRef.current.trial
-    if (!trial) return
-
-    const points = getPathGuidePoints(trial)
-    if (points.length < 2) return
-
-    ctx.save()
-    ctx.strokeStyle = PREDICTION_CONFIG.colors.guideLine
-    ctx.lineWidth = 3
-    ctx.setLineDash([10, 8])
-    ctx.beginPath()
-
-    ctx.moveTo(points[0].x, points[0].y)
-
-    for (let i = 1; i < points.length; i += 1) {
-      ctx.lineTo(points[i].x, points[i].y)
-    }
-
-    ctx.stroke()
-    ctx.restore()
-  }
-
   function drawClick(ctx: CanvasRenderingContext2D, point: Point): void {
     const colors = PREDICTION_CONFIG.colors
 
     ctx.save()
+
     ctx.strokeStyle = colors.click
     ctx.lineWidth = 3
 
@@ -275,26 +230,44 @@ export function PredictionInterceptGamePage() {
     ctx.restore()
   }
 
-  function drawFeedback(
+  function drawInstructionText(
     ctx: CanvasRenderingContext2D,
-    click: Point | null,
-    actual: Point | null,
-    error: number | null,
+    currentPhase: GamePhase,
   ): void {
-    if (!actual) return
+    ctx.save()
+    ctx.fillStyle = PREDICTION_CONFIG.colors.text
+    ctx.font = 'bold 24px sans-serif'
 
-    drawTarget(ctx, actual)
+    if (currentPhase === 'observe') {
+      ctx.fillText('สนามสีฟ้า: สังเกตทิศทางและความเร็วของเป้าหมาย', 32, 42)
+    } else if (currentPhase === 'wait') {
+      ctx.fillText('สนามสีฟ้า: เป้าหมายหายไปแล้ว รอสัญญาณสีเขียว', 32, 42)
+    } else if (currentPhase === 'clickable') {
+      ctx.fillText('สนามสีเขียว: คลิกตำแหน่งที่คิดว่าเป้าจะอยู่', 32, 42)
+    } else if (currentPhase === 'idle') {
+      ctx.fillStyle = PREDICTION_CONFIG.colors.muted
+      ctx.fillText('กดเริ่มทดสอบเพื่อเริ่มเกม', 32, 42)
+    }
 
-    if (click) {
-      drawClick(ctx, click)
+    ctx.restore()
+  }
+
+  function drawFeedback(ctx: CanvasRenderingContext2D): void {
+    const feedback = engineRef.current.feedback
+    if (!feedback || !feedback.actual) return
+
+    drawTarget(ctx, feedback.actual)
+
+    if (feedback.click) {
+      drawClick(ctx, feedback.click)
 
       ctx.save()
       ctx.strokeStyle = PREDICTION_CONFIG.colors.errorLine
       ctx.lineWidth = 2
       ctx.setLineDash([8, 6])
       ctx.beginPath()
-      ctx.moveTo(click.x, click.y)
-      ctx.lineTo(actual.x, actual.y)
+      ctx.moveTo(feedback.click.x, feedback.click.y)
+      ctx.lineTo(feedback.actual.x, feedback.actual.y)
       ctx.stroke()
       ctx.restore()
     }
@@ -302,13 +275,84 @@ export function PredictionInterceptGamePage() {
     ctx.save()
     ctx.fillStyle = PREDICTION_CONFIG.colors.text
     ctx.font = 'bold 22px sans-serif'
-    ctx.fillText(
-      error !== null && Number.isFinite(error)
-        ? `Prediction Error: ${error.toFixed(1)} px`
-        : 'No response',
-      32,
-      42,
+
+    const reactionText =
+      feedback.reactionTimeMs !== null
+        ? ` • Reaction: ${feedback.reactionTimeMs.toFixed(0)} ms`
+        : ''
+
+    const text =
+      feedback.error !== null && Number.isFinite(feedback.error)
+        ? `Error: ${feedback.error.toFixed(1)} px • Score: ${
+            feedback.trialScore ?? 0
+          }${reactionText}`
+        : feedback.responseLabel
+
+    ctx.fillText(text, 32, 42)
+    ctx.restore()
+  }
+
+  function drawPhaseBadge(
+    ctx: CanvasRenderingContext2D,
+    currentPhase: GamePhase,
+  ): void {
+    const { width } = PREDICTION_CONFIG.canvas
+
+    let label = ''
+    let bg = '#0f172a'
+
+    if (currentPhase === 'observe') {
+      label = `Trial ${engineRef.current.currentTrialIndex}/${trialCount} • สังเกต`
+      bg = 'rgba(14, 116, 144, 0.9)'
+    } else if (currentPhase === 'wait') {
+      label = `Trial ${engineRef.current.currentTrialIndex}/${trialCount} • รอสีเขียว`
+      bg = 'rgba(14, 116, 144, 0.95)'
+    } else if (currentPhase === 'clickable') {
+      label = `Trial ${engineRef.current.currentTrialIndex}/${trialCount} • คลิกได้`
+      bg = 'rgba(22, 101, 52, 0.95)'
+    } else if (currentPhase === 'feedback') {
+      label = `Trial ${engineRef.current.currentTrialIndex}/${trialCount} • เฉลย`
+      bg = 'rgba(15, 23, 42, 0.86)'
+    }
+
+    if (!label) return
+
+    ctx.save()
+    ctx.font = 'bold 16px sans-serif'
+
+    const textWidth = ctx.measureText(label).width
+    const pillWidth = textWidth + 28
+    const pillHeight = 42
+    const x = width - pillWidth - 24
+    const y = 24
+    const radius = 21
+
+    ctx.fillStyle = bg
+    ctx.beginPath()
+    ctx.moveTo(x + radius, y)
+    ctx.lineTo(x + pillWidth - radius, y)
+    ctx.quadraticCurveTo(x + pillWidth, y, x + pillWidth, y + radius)
+    ctx.lineTo(x + pillWidth, y + pillHeight - radius)
+    ctx.quadraticCurveTo(
+      x + pillWidth,
+      y + pillHeight,
+      x + pillWidth - radius,
+      y + pillHeight,
     )
+    ctx.lineTo(x + radius, y + pillHeight)
+    ctx.quadraticCurveTo(x, y + pillHeight, x, y + pillHeight - radius)
+    ctx.lineTo(x, y + radius)
+    ctx.quadraticCurveTo(x, y, x + radius, y)
+    ctx.closePath()
+    ctx.fill()
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'
+    ctx.lineWidth = 1.2
+    ctx.stroke()
+
+    ctx.fillStyle = '#ffffff'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(label, x + 14, y + pillHeight / 2)
     ctx.restore()
   }
 
@@ -319,34 +363,20 @@ export function PredictionInterceptGamePage() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    drawGrid(ctx)
-
-    ctx.save()
-    ctx.fillStyle = PREDICTION_CONFIG.colors.muted
-    ctx.font = 'bold 24px sans-serif'
-    ctx.fillText('กดเริ่มทดสอบเพื่อเริ่มเกม', 32, 42)
-    ctx.restore()
+    drawGrid(ctx, 'idle')
+    drawInstructionText(ctx, 'idle')
   }
 
-  function goNextTrial(): void {
-    const engine = engineRef.current
-    const now = performance.now()
-
-    const nextTrial = engine.goNextTrial(now)
-
-    if (!nextTrial) {
-      setStatusText('จบการทดสอบแล้ว')
-      syncFromEngine()
-      stopLoop()
-      renderStatic()
-      return
+  function updateStatusText(currentPhase: GamePhase): void {
+    if (currentPhase === 'observe') {
+      setStatusText('สนามสีฟ้า: สังเกตเป้าหมายและเส้นประเพื่อคาดการณ์')
+    } else if (currentPhase === 'wait') {
+      setStatusText('สนามสีฟ้า: เป้าหมายหายไปแล้ว รอให้สนามเป็นสีเขียว')
+    } else if (currentPhase === 'clickable') {
+      setStatusText('สนามสีเขียว: ตอนนี้คลิกตำแหน่งที่คาดว่าเป้าอยู่ได้')
+    } else if (currentPhase === 'feedback') {
+      setStatusText('เฉลยตำแหน่งจริงและคะแนนของรอบนี้')
     }
-
-    setStatusText('สังเกตทิศทางและความเร็วของเป้าหมาย')
-    syncFromEngine()
-
-    stopLoop()
-    frameRef.current = requestAnimationFrame(renderFrame)
   }
 
   function renderFrame(now: number): void {
@@ -357,98 +387,55 @@ export function PredictionInterceptGamePage() {
     if (!ctx) return
 
     const engine = engineRef.current
-    const trial = engine.trial
-    const phaseNow = engine.phase
 
-    drawGrid(ctx)
+    engine.update(now)
 
-    if (!trial) {
-      renderStatic()
+    const currentPhase = engine.phase
+
+    syncFromEngine()
+
+    drawGrid(ctx, currentPhase)
+
+    if (engine.trial) {
+      drawGuidePath(ctx)
+    }
+
+    if (engine.trial && currentPhase === 'observe') {
+      const target = getTargetPosition(engine.trial, now - engine.trial.startAt)
+      drawTarget(ctx, target)
+    }
+
+    if (currentPhase === 'feedback') {
+      drawFeedback(ctx)
+    } else {
+      drawInstructionText(ctx, currentPhase)
+    }
+
+    drawPhaseBadge(ctx, currentPhase)
+
+    if (currentPhase === 'finished') {
+      stopLoop()
+      setStatusText('จบการทดสอบแล้ว')
       return
     }
 
-    drawPathGuide(ctx)
-
-    const elapsed = now - trial.startAt
-    const target = getTargetPosition(trial, elapsed)
-
-    if (phaseNow === 'visible') {
-      drawTarget(ctx, target)
-
-      if (elapsed >= trial.visibleMs) {
-        engine.setHidden(now)
-        setStatusText(
-          'เป้าหมายหายไปแล้ว คลิกตำแหน่งที่คุณคิดว่าเป้าหมายจะไปถึง',
-        )
-        syncFromEngine()
-      }
-    }
-
-    if (phaseNow === 'hidden') {
-      ctx.save()
-      ctx.fillStyle = PREDICTION_CONFIG.colors.text
-      ctx.font = 'bold 24px sans-serif'
-      ctx.fillText('คลิกตำแหน่งที่คาดว่าเป้าหมายจะอยู่', 32, 42)
-      ctx.restore()
-
-      const hiddenElapsed = now - trial.hiddenStartAt
-      const timeoutMs =
-        trial.occlusionMs + PREDICTION_CONFIG.trial.noResponseGraceMs
-
-      if (hiddenElapsed > timeoutMs) {
-        const result = createNoResponseResult(trial, now)
-
-        engine.addResult(result)
-
-        const feedback: FeedbackState = {
-          until: now + PREDICTION_CONFIG.trial.feedbackMs,
-          click: null,
-          actual: result.actual,
-          error: null,
-        }
-
-        engine.setFeedback(feedback)
-        setStatusText('ไม่พบการตอบสนองในรอบนี้')
-        syncFromEngine()
-      }
-    }
-
-    if (phaseNow === 'feedback') {
-      const feedback = engine.feedback
-
-      if (feedback) {
-        drawFeedback(ctx, feedback.click, feedback.actual, feedback.error)
-
-        if (now >= feedback.until) {
-          goNextTrial()
-          return
-        }
-      }
-    }
-
+    updateStatusText(currentPhase)
     frameRef.current = requestAnimationFrame(renderFrame)
   }
 
   function startActualGame(): void {
     const engine = engineRef.current
-    const now = performance.now()
-
-    const seed =
-      seedMode === 'fixed'
-        ? Number(seedInput) || PREDICTION_CONFIG.seed.defaultSeed
-        : generateRandomSeed()
-
-    setActiveSeed(seed)
 
     engine.configure({
+      difficulty,
       trialCount,
-      speedMode,
-      seed,
     })
 
-    engine.start(now)
+    engine.start(performance.now())
 
-    setStatusText('สังเกตทิศทางและความเร็วของเป้าหมาย')
+    setSummary(null)
+    setResults([])
+    setStatusText('เริ่มการทดสอบ')
     syncFromEngine()
 
     stopLoop()
@@ -462,15 +449,14 @@ export function PredictionInterceptGamePage() {
     stopLoop()
     engine.reset()
 
+    setSummary(null)
     setResults([])
     setCurrentTrialIndex(0)
-    setPhase('idle')
-    setActiveSeed(null)
-    setCopySeedStatus('')
+    setPhase('countdown')
     setStatusText('เตรียมพร้อม เริ่มในอีก 3 วินาที')
     renderStatic()
 
-    let count = 3
+    let count = PREDICTION_CONFIG.trial.countdownSec
     setCountdownValue(count)
 
     countdownTimerRef.current = window.setInterval(() => {
@@ -484,7 +470,6 @@ export function PredictionInterceptGamePage() {
 
       clearCountdownTimer()
       setCountdownValue(null)
-      setStatusText('เริ่มการทดสอบ')
       startActualGame()
     }, 1000)
   }
@@ -497,6 +482,9 @@ export function PredictionInterceptGamePage() {
     engine.reset()
 
     setCountdownValue(null)
+    setSummary(null)
+    setResults([])
+    setCurrentTrialIndex(0)
     setStatusText('กดเริ่มทดสอบเพื่อเริ่มเกม')
     syncFromEngine()
     renderStatic()
@@ -504,53 +492,15 @@ export function PredictionInterceptGamePage() {
 
   function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>): void {
     const canvas = canvasRef.current
+    if (!canvas) return
+
     const engine = engineRef.current
-    const trial = engine.trial
+    if (engine.phase !== 'clickable') return
 
-    if (!canvas || !trial) return
-    if (engine.phase !== 'hidden') return
-
-    const now = performance.now()
     const click = getCanvasPoint(canvas, e)
-
-    const result = calculateTrialResult(trial, click, now)
-
-    engine.addResult(result)
-
-    const feedback: FeedbackState = {
-      until: now + PREDICTION_CONFIG.trial.feedbackMs,
-      click,
-      actual: result.actual,
-      error: result.predictionError,
-    }
-
-    engine.setFeedback(feedback)
-
-    setStatusText(
-      `Prediction Error ${result.predictionError.toFixed(
-        1,
-      )} px • Timing Error ${formatMs(result.timingError)}`,
-    )
+    engine.handleClick(click, performance.now())
 
     syncFromEngine()
-  }
-
-  async function copyActiveSeed(): Promise<void> {
-    if (!activeSeed) {
-      setCopySeedStatus('ยังไม่มี Seed ให้คัดลอก')
-      return
-    }
-
-    try {
-      await navigator.clipboard.writeText(String(activeSeed))
-      setCopySeedStatus(`คัดลอก Seed ${activeSeed} แล้ว`)
-    } catch {
-      setCopySeedStatus('คัดลอก Seed ไม่สำเร็จ')
-    }
-
-    window.setTimeout(() => {
-      setCopySeedStatus('')
-    }, 1800)
   }
 
   useEffect(() => {
@@ -562,11 +512,14 @@ export function PredictionInterceptGamePage() {
     }
   }, [])
 
+  const averageTrialScore =
+    results.length > 0 && summary ? summary.totalScore / results.length : 0
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-sp-bg font-sans text-sp-text">
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-sp-page flex-grow px-6 py-8 md:px-12">
+      <main className="mx-auto w-full max-w-[108rem] flex-grow px-4 py-8 md:px-6">
         <div className="mb-6">
           <Link
             to="/librarygame"
@@ -580,13 +533,29 @@ export function PredictionInterceptGamePage() {
           </h1>
 
           <p className="mt-2 text-sp-text-muted">
-            เป้าหมายจะเคลื่อนที่เป็นเส้นตรงแบบควบคุมได้ เมื่อเป้าหมายหายไป
-            ให้คลิกตำแหน่งที่คิดว่าเป้าหมายจะไปถึง
+            สังเกตเป้าหมายที่เคลื่อนที่และเส้นทางคาดการณ์
+            เมื่อสนามเปลี่ยนเป็นสีเขียว ให้คลิกตำแหน่งที่คิดว่าเป้าจะอยู่
           </p>
         </div>
 
         <section className="mb-6 rounded-3xl border border-sp-border bg-sp-card p-5 shadow-sp-card">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <label className="text-sm font-bold text-sp-text-muted">
+              ระดับความยาก
+              <select
+                className="mt-2 w-full rounded-xl border border-sp-border bg-sp-bg px-3 py-3 text-sp-text"
+                value={difficulty}
+                onChange={(e) =>
+                  setDifficulty(e.currentTarget.value as Difficulty)
+                }
+                disabled={isRunning}
+              >
+                <option value="easy">Easy</option>
+                <option value="normal">Normal</option>
+                <option value="hard">Hard</option>
+              </select>
+            </label>
+
             <label className="text-sm font-bold text-sp-text-muted">
               จำนวนรอบ
               <select
@@ -602,47 +571,12 @@ export function PredictionInterceptGamePage() {
               </select>
             </label>
 
-            <label className="text-sm font-bold text-sp-text-muted">
-              ความเร็ว
-              <select
-                className="mt-2 w-full rounded-xl border border-sp-border bg-sp-bg px-3 py-3 text-sp-text"
-                value={speedMode}
-                onChange={(e) =>
-                  setSpeedMode(e.currentTarget.value as SpeedMode)
-                }
-                disabled={isRunning}
-              >
-                <option value="slow">Slow</option>
-                <option value="normal">Normal</option>
-                <option value="fast">Fast</option>
-              </select>
-            </label>
-
-            <label className="text-sm font-bold text-sp-text-muted">
-              โหมด Seed
-              <select
-                className="mt-2 w-full rounded-xl border border-sp-border bg-sp-bg px-3 py-3 text-sp-text"
-                value={seedMode}
-                onChange={(e) =>
-                  setSeedMode(e.currentTarget.value as SeedMode)
-                }
-                disabled={isRunning}
-              >
-                <option value="random">Random</option>
-                <option value="fixed">Fixed Seed</option>
-              </select>
-            </label>
-
-            <label className="text-sm font-bold text-sp-text-muted">
-              Seed
-              <input
-                className="mt-2 w-full rounded-xl border border-sp-border bg-sp-bg px-3 py-3 text-sp-text disabled:opacity-60"
-                type="number"
-                value={seedInput}
-                onChange={(e) => setSeedInput(e.currentTarget.value)}
-                disabled={isRunning || seedMode === 'random'}
-              />
-            </label>
+            <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
+              <p className="text-sm text-sp-text-muted">สถานะ</p>
+              <p className="text-2xl font-black text-sp-text">
+                {countdownValue !== null ? 'Countdown' : phaseLabel[phase]}
+              </p>
+            </div>
 
             <div className="flex items-end gap-3">
               <button
@@ -661,27 +595,10 @@ export function PredictionInterceptGamePage() {
               </button>
             </div>
           </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-sp-text-muted">
-            <span>
-              Seed ที่ใช้:{' '}
-              <strong className="text-sp-text">{activeSeed ?? '-'}</strong>
-            </span>
-
-            <button
-              type="button"
-              className="rounded-xl border border-sp-border bg-sp-bg px-3 py-2 font-bold text-sp-text hover:bg-sp-card-hover"
-              onClick={copyActiveSeed}
-            >
-              Copy Seed
-            </button>
-
-            <span>{copySeedStatus}</span>
-          </div>
         </section>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
-          <section className="rounded-3xl border border-sp-border bg-sp-card p-5 shadow-sp-card">
+        <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_330px]">
+          <section className="rounded-3xl border border-sp-border bg-sp-card p-4 shadow-sp-card">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black text-sp-text">
@@ -731,14 +648,21 @@ export function PredictionInterceptGamePage() {
 
               <div className="grid grid-cols-1 gap-3">
                 <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
-                  <p className="text-sm text-sp-text-muted">ความแม่นยำรวม</p>
+                  <p className="text-sm text-sp-text-muted">Total Score</p>
                   <p className="text-3xl font-black text-sp-text">
-                    {validResults.length
-                      ? `${overallAccuracy.toFixed(0)}%`
-                      : '-'}
+                    {summary ? summary.totalScore : '-'}
                   </p>
                   <p className="mt-1 text-sm font-bold text-sp-primary">
-                    {validResults.length ? accuracyLabel : ''}
+                    {summary ? getScoreLabel(averageTrialScore) : ''}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
+                  <p className="text-sm text-sp-text-muted">
+                    ความแม่นยำตำแหน่ง
+                  </p>
+                  <p className="text-2xl font-black text-sp-text">
+                    {summary ? `${summary.positionAccuracy.toFixed(0)}%` : '-'}
                   </p>
                 </div>
 
@@ -747,41 +671,35 @@ export function PredictionInterceptGamePage() {
                     ระยะพลาดเฉลี่ย
                   </p>
                   <p className="text-2xl font-black text-sp-text">
-                    {validResults.length
-                      ? `${meanPredictionError.toFixed(1)} px`
+                    {summary && summary.completedTrials > 0
+                      ? `${summary.meanPredictionError.toFixed(1)} px`
                       : '-'}
-                  </p>
-                  <p className="mt-1 text-xs text-sp-text-muted">
-                    ยิ่งน้อยยิ่งดี
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
                   <p className="text-sm text-sp-text-muted">
-                    ความแม่นยำด้านเวลา
+                    ความแม่นยำด้านจังหวะ
                   </p>
                   <p className="text-2xl font-black text-sp-text">
-                    {validResults.length
-                      ? `${timingAccuracy.toFixed(0)}%`
-                      : '-'}
+                    {summary ? `${summary.timingAccuracy.toFixed(0)}%` : '-'}
                   </p>
                   <p className="mt-1 text-xs text-sp-text-muted">
-                    คำนวณจากการคลิกเร็วหรือช้าเกินไป
+                    คิดจากความเร็วหลังสนามเป็นสีเขียว
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-sp-border bg-sp-bg p-4">
                   <p className="text-sm text-sp-text-muted">
-                    แนวโน้มการคาดการณ์
+                    ความเร็วหลังสีเขียว
                   </p>
-                  <p className="text-lg font-black text-sp-text">
-                    {validResults.length ? biasLabel : '-'}
+                  <p className="text-2xl font-black text-sp-text">
+                    {summary && summary.completedTrials > 0
+                      ? `${summary.meanReactionTimeMs.toFixed(0)} ms`
+                      : '-'}
                   </p>
                   <p className="mt-1 text-xs text-sp-text-muted">
-                    ค่าเฉลี่ยแนวหน้า-หลัง:{' '}
-                    {validResults.length
-                      ? `${meanAlongBias.toFixed(1)} px`
-                      : '-'}
+                    ยิ่งคลิกเร็วหลังสนามเป็นสีเขียว ยิ่งได้คะแนนจังหวะสูง
                   </p>
                 </div>
               </div>
@@ -793,16 +711,13 @@ export function PredictionInterceptGamePage() {
               </h3>
 
               <ul className="space-y-2 text-sm text-sp-text-muted">
-                <li>• เป้าหมายเคลื่อนที่เป็นเส้นตรงเท่านั้น</li>
-                <li>• สังเกตทิศทางและความเร็วของเป้าหมาย</li>
-                <li>
-                  • เมื่อเป้าหมายหายไป
-                  ให้คลิกตำแหน่งที่คาดว่าเป้าหมายจะอยู่
-                </li>
-                <li>
-                  • ใช้ Fixed Seed เพื่อให้ผู้เล่นหลายคนเจอเส้นทางเดียวกัน
-                </li>
-                <li>• ความแม่นยำรวมยิ่งสูงยิ่งดี</li>
+                <li>• สนามสีฟ้า = สังเกตหรือรอ ยังไม่ให้คลิก</li>
+                <li>• สนามสีเขียว = ถึงเวลาคลิกตำแหน่งที่คิดว่าเป้าอยู่</li>
+                <li>• เส้นประช่วยบอกแนวการเคลื่อนที่ของเป้าหมาย</li>
+                <li>• Easy มีเวลาสังเกตและเวลาคลิกมากกว่า</li>
+                <li>• Hard เป้าเร็วกว่า และช่วงคลิกสั้นกว่า</li>
+                <li>• ทุกโหมดใช้สูตรคะแนนเดียวกัน</li>
+                <li>• คะแนนสูงเมื่อคลิกใกล้ตำแหน่งจริงและคลิกเร็วหลังสีเขียว</li>
               </ul>
             </section>
           </aside>

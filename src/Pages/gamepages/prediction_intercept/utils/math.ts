@@ -3,7 +3,7 @@ import type { Point } from '../types'
 export class SeededRNG {
   private state: number
 
-  constructor(seed = 123456789) {
+  constructor(seed = Date.now()) {
     this.state = seed >>> 0
   }
 
@@ -23,6 +23,10 @@ export class SeededRNG {
   }
 }
 
+export function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
 export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y)
 }
@@ -38,6 +42,19 @@ export function formatMs(value: number): string {
   return `${sign}${value.toFixed(0)} ms`
 }
 
-export function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
+export function reflectCoordinate(value: number, min: number, max: number): number {
+  const range = max - min
+  if (range <= 0) return min
+
+  let normalized = (value - min) % (range * 2)
+
+  if (normalized < 0) {
+    normalized += range * 2
+  }
+
+  if (normalized <= range) {
+    return min + normalized
+  }
+
+  return max - (normalized - range)
 }
