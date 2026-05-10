@@ -159,35 +159,34 @@ export function PredictionInterceptGamePage() {
   }
 
   function drawGuidePath(ctx: CanvasRenderingContext2D): void {
-    const trial = engineRef.current.trial
-    if (!trial) return
+  const trial = engineRef.current.trial
+  if (!trial) return
 
-    const { width, height, margin } = PREDICTION_CONFIG.canvas
-    const totalDuration = trial.observeMs + trial.waitMs + trial.clickWindowMs
-    const points = getPathGuidePoints(trial, totalDuration, 70)
+  const { width, height, margin } = PREDICTION_CONFIG.canvas
+  const points = getPathGuidePoints(trial, trial.totalMotionMs, 40)
 
-    if (points.length < 2) return
+  if (points.length < 2) return
 
-    ctx.save()
+  ctx.save()
 
-    ctx.beginPath()
-    ctx.rect(margin, margin, width - margin * 2, height - margin * 2)
-    ctx.clip()
+  ctx.beginPath()
+  ctx.rect(margin, margin, width - margin * 2, height - margin * 2)
+  ctx.clip()
 
-    ctx.strokeStyle = PREDICTION_CONFIG.colors.pathGuide
-    ctx.lineWidth = 2.5
-    ctx.setLineDash([10, 8])
+  ctx.strokeStyle = PREDICTION_CONFIG.colors.pathGuide
+  ctx.lineWidth = 2.5
+  ctx.setLineDash([10, 8])
 
-    ctx.beginPath()
-    ctx.moveTo(points[0].x, points[0].y)
+  ctx.beginPath()
+  ctx.moveTo(points[0].x, points[0].y)
 
-    for (let i = 1; i < points.length; i += 1) {
-      ctx.lineTo(points[i].x, points[i].y)
-    }
-
-    ctx.stroke()
-    ctx.restore()
+  for (let i = 1; i < points.length; i += 1) {
+    ctx.lineTo(points[i].x, points[i].y)
   }
+
+  ctx.stroke()
+  ctx.restore()
+}
 
   function drawTarget(ctx: CanvasRenderingContext2D, point: Point): void {
     const { radius, ringRadius } = PREDICTION_CONFIG.target
@@ -313,6 +312,9 @@ export function PredictionInterceptGamePage() {
     } else if (currentPhase === 'feedback') {
       label = `Trial ${engineRef.current.currentTrialIndex}/${trialCount} • เฉลย`
       bg = 'rgba(15, 23, 42, 0.86)'
+    } else if (currentPhase === 'finished') {
+      label = `Trial ${trialCount}/${trialCount} • เสร็จสิ้น`
+      bg = 'rgba(15, 23, 42, 0.86)'
     }
 
     if (!label) return
@@ -369,13 +371,15 @@ export function PredictionInterceptGamePage() {
 
   function updateStatusText(currentPhase: GamePhase): void {
     if (currentPhase === 'observe') {
-      setStatusText('สนามสีฟ้า: สังเกตเป้าหมายและเส้นประเพื่อคาดการณ์')
+      setStatusText('สนามสีฟ้า: สังเกตเป้าหมายที่วิ่งตามเส้นประ')
     } else if (currentPhase === 'wait') {
       setStatusText('สนามสีฟ้า: เป้าหมายหายไปแล้ว รอให้สนามเป็นสีเขียว')
     } else if (currentPhase === 'clickable') {
-      setStatusText('สนามสีเขียว: ตอนนี้คลิกตำแหน่งที่คาดว่าเป้าอยู่ได้')
+      setStatusText('สนามสีเขียว: คลิกตำแหน่งที่คาดว่าเป้าอยู่ได้')
     } else if (currentPhase === 'feedback') {
       setStatusText('เฉลยตำแหน่งจริงและคะแนนของรอบนี้')
+    } else if (currentPhase === 'finished') {
+      setStatusText('จบการทดสอบแล้ว')
     }
   }
 
@@ -415,7 +419,7 @@ export function PredictionInterceptGamePage() {
 
     if (currentPhase === 'finished') {
       stopLoop()
-      setStatusText('จบการทดสอบแล้ว')
+      updateStatusText(currentPhase)
       return
     }
 
@@ -495,6 +499,7 @@ export function PredictionInterceptGamePage() {
     if (!canvas) return
 
     const engine = engineRef.current
+
     if (engine.phase !== 'clickable') return
 
     const click = getCanvasPoint(canvas, e)
@@ -533,8 +538,8 @@ export function PredictionInterceptGamePage() {
           </h1>
 
           <p className="mt-2 text-sp-text-muted">
-            สังเกตเป้าหมายที่เคลื่อนที่และเส้นทางคาดการณ์
-            เมื่อสนามเปลี่ยนเป็นสีเขียว ให้คลิกตำแหน่งที่คิดว่าเป้าจะอยู่
+            สังเกตเป้าหมายที่เคลื่อนที่ตามเส้นประ เมื่อสนามเปลี่ยนเป็นสีเขียว
+            ให้คลิกตำแหน่งที่คิดว่าเป้าจะอยู่
           </p>
         </div>
 
@@ -604,6 +609,7 @@ export function PredictionInterceptGamePage() {
                 <h2 className="text-xl font-black text-sp-text">
                   พื้นที่ทดสอบ
                 </h2>
+
                 <p className="text-sm text-sp-text-muted">{statusText}</p>
               </div>
 
@@ -652,6 +658,7 @@ export function PredictionInterceptGamePage() {
                   <p className="text-3xl font-black text-sp-text">
                     {summary ? summary.totalScore : '-'}
                   </p>
+
                   <p className="mt-1 text-sm font-bold text-sp-primary">
                     {summary ? getScoreLabel(averageTrialScore) : ''}
                   </p>
@@ -661,6 +668,7 @@ export function PredictionInterceptGamePage() {
                   <p className="text-sm text-sp-text-muted">
                     ความแม่นยำตำแหน่ง
                   </p>
+
                   <p className="text-2xl font-black text-sp-text">
                     {summary ? `${summary.positionAccuracy.toFixed(0)}%` : '-'}
                   </p>
@@ -670,6 +678,7 @@ export function PredictionInterceptGamePage() {
                   <p className="text-sm text-sp-text-muted">
                     ระยะพลาดเฉลี่ย
                   </p>
+
                   <p className="text-2xl font-black text-sp-text">
                     {summary && summary.completedTrials > 0
                       ? `${summary.meanPredictionError.toFixed(1)} px`
@@ -681,9 +690,11 @@ export function PredictionInterceptGamePage() {
                   <p className="text-sm text-sp-text-muted">
                     ความแม่นยำด้านจังหวะ
                   </p>
+
                   <p className="text-2xl font-black text-sp-text">
                     {summary ? `${summary.timingAccuracy.toFixed(0)}%` : '-'}
                   </p>
+
                   <p className="mt-1 text-xs text-sp-text-muted">
                     คิดจากความเร็วหลังสนามเป็นสีเขียว
                   </p>
@@ -693,11 +704,13 @@ export function PredictionInterceptGamePage() {
                   <p className="text-sm text-sp-text-muted">
                     ความเร็วหลังสีเขียว
                   </p>
+
                   <p className="text-2xl font-black text-sp-text">
                     {summary && summary.completedTrials > 0
                       ? `${summary.meanReactionTimeMs.toFixed(0)} ms`
                       : '-'}
                   </p>
+
                   <p className="mt-1 text-xs text-sp-text-muted">
                     ยิ่งคลิกเร็วหลังสนามเป็นสีเขียว ยิ่งได้คะแนนจังหวะสูง
                   </p>
@@ -713,7 +726,7 @@ export function PredictionInterceptGamePage() {
               <ul className="space-y-2 text-sm text-sp-text-muted">
                 <li>• สนามสีฟ้า = สังเกตหรือรอ ยังไม่ให้คลิก</li>
                 <li>• สนามสีเขียว = ถึงเวลาคลิกตำแหน่งที่คิดว่าเป้าอยู่</li>
-                <li>• เส้นประช่วยบอกแนวการเคลื่อนที่ของเป้าหมาย</li>
+                <li>• เส้นประคือเส้นทางจริงที่เป้าหมายเคลื่อนที่ตาม</li>
                 <li>• Easy มีเวลาสังเกตและเวลาคลิกมากกว่า</li>
                 <li>• Hard เป้าเร็วกว่า และช่วงคลิกสั้นกว่า</li>
                 <li>• ทุกโหมดใช้สูตรคะแนนเดียวกัน</li>

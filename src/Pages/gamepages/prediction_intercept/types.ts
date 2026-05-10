@@ -46,11 +46,16 @@ export type TrialConfig = {
   x0: number
   y0: number
 
+  endX: number
+  endY: number
+
   vx: number
   vy: number
 
   speed: number
   direction: 1 | -1
+
+  totalMotionMs: number
 }
 
 export type TrialResult = {

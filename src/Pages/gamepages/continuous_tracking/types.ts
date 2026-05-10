@@ -16,22 +16,28 @@ export type MovementSegment = {
   angle: number
 }
 
+export type DistanceRange = {
+  min: number
+  max: number
+}
+
 export type DifficultyConfig = {
   label: string
   targetRadius: number
   safeMargin: number
-  segmentDistance: {
-    min: number
-    max: number
-  }
+
+  distancePlan: DistanceRange[]
+
   speed: {
     min: number
     max: number
   }
+
   turnAngleDeg: {
     min: number
     max: number
   }
+
   candidateCount: number
 }
 

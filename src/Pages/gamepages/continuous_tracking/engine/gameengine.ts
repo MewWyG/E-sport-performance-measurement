@@ -14,6 +14,7 @@ import {
   createInitialTargetPosition,
   generateNextSegment,
   SeededRNG,
+  SegmentDistancePlanner,
 } from './PathGenerator'
 import {
   calculateCenterScore,
@@ -35,6 +36,8 @@ export class ContinuousTrackingEngine {
   private callbacks: EngineCallbacks
 
   private rng: SeededRNG
+  private distancePlanner: SegmentDistancePlanner
+
   private difficulty: Difficulty
   private durationSec: number
   private state: TrialState
@@ -67,6 +70,8 @@ export class ContinuousTrackingEngine {
     this.callbacks = callbacks
 
     this.rng = new SeededRNG()
+    this.distancePlanner = new SegmentDistancePlanner('normal', this.rng)
+
     this.difficulty = 'normal'
     this.durationSec = 30
     this.state = 'idle'
@@ -154,6 +159,7 @@ export class ContinuousTrackingEngine {
 
     const internalSeed = generateInternalSeed()
     this.rng = new SeededRNG(internalSeed)
+    this.distancePlanner.reset(this.difficulty, this.rng)
 
     this.target = createInitialTargetPosition(this.rng)
     this.cursor = {
@@ -189,6 +195,7 @@ export class ContinuousTrackingEngine {
 
     this.state = 'idle'
     this.rng = new SeededRNG()
+    this.distancePlanner.reset('normal', this.rng)
 
     this.target = {
       x: CONTINUOUS_TRACKING_CONFIG.canvas.width / 2,
@@ -253,11 +260,14 @@ export class ContinuousTrackingEngine {
   }
 
   private createNewSegment(now: number): void {
+    const distancePx = this.distancePlanner.nextDistance()
+
     const nextSegment = generateNextSegment(
       this.target,
       this.previousAngle,
       this.difficulty,
       this.rng,
+      distancePx,
     )
 
     this.segment = nextSegment
