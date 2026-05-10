@@ -1,235 +1,168 @@
 import { PREDICTION_CONFIG } from '../config'
-import type { Difficulty, Point, TrialConfig } from '../types'
+import type {
+  Difficulty,
+  FeedbackState,
+  GamePhase,
+  TrialConfig,
+  TrialResult,
+} from '../types'
 import { SeededRNG } from '../utils/math'
+import { createTrial } from './PredictionMotion'
+import {
+  calculateTrialResult,
+  createMissResult,
+} from './PredictionScoring'
 
-function getArenaBounds() {
-  const { width, height, margin } = PREDICTION_CONFIG.canvas
-  const radius = PREDICTION_CONFIG.target.ringRadius
+export class PredictionEngine {
+  phase: GamePhase
+  difficulty: Difficulty
+  trialCount: number
+  currentTrialIndex: number
 
-  return {
-    minX: margin + radius,
-    maxX: width - margin - radius,
-    minY: margin + radius,
-    maxY: height - margin - radius,
-  }
-}
+  trial: TrialConfig | null
+  feedback: FeedbackState | null
+  results: TrialResult[]
 
-function isInsideArena(point: Point): boolean {
-  const bounds = getArenaBounds()
+  private rng: SeededRNG
 
-  return (
-    point.x >= bounds.minX &&
-    point.x <= bounds.maxX &&
-    point.y >= bounds.minY &&
-    point.y <= bounds.maxY
-  )
-}
+  constructor() {
+    this.phase = 'idle'
+    this.difficulty = 'normal'
+    this.trialCount = PREDICTION_CONFIG.trial.defaultTrialCount
+    this.currentTrialIndex = 0
 
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t
-}
+    this.trial = null
+    this.feedback = null
+    this.results = []
 
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
-
-function createCandidateTrial(
-  index: number,
-  now: number,
-  difficulty: Difficulty,
-  rng: SeededRNG,
-): TrialConfig | null {
-  const config = PREDICTION_CONFIG.difficulty[difficulty]
-  const bounds = getArenaBounds()
-
-  const observeMs = rng.range(config.observeMs.min, config.observeMs.max)
-  const waitMs = rng.range(config.waitMs.min, config.waitMs.max)
-  const clickWindowMs = config.clickWindowMs
-
-  const totalMotionMs = observeMs + waitMs + clickWindowMs
-  const totalSeconds = totalMotionMs / 1000
-
-  const speed = rng.range(config.speed.min, config.speed.max)
-  const direction: 1 | -1 = rng.next() < 0.5 ? 1 : -1
-  const slope = rng.pick(config.slopeOptions)
-
-  const vx = direction * speed
-  const vy = speed * slope
-
-  const travelX = vx * totalSeconds
-  const travelY = vy * totalSeconds
-
-  let minStartX: number
-  let maxStartX: number
-
-  if (travelX >= 0) {
-    minStartX = bounds.minX
-    maxStartX = bounds.maxX - travelX
-  } else {
-    minStartX = bounds.minX - travelX
-    maxStartX = bounds.maxX
+    this.rng = new SeededRNG()
   }
 
-  let minStartY: number
-  let maxStartY: number
-
-  if (travelY >= 0) {
-    minStartY = bounds.minY
-    maxStartY = bounds.maxY - travelY
-  } else {
-    minStartY = bounds.minY - travelY
-    maxStartY = bounds.maxY
+  reset(): void {
+    this.phase = 'idle'
+    this.currentTrialIndex = 0
+    this.trial = null
+    this.feedback = null
+    this.results = []
+    this.rng = new SeededRNG()
   }
 
-  if (minStartX > maxStartX || minStartY > maxStartY) {
-    return null
+  configure(options: {
+    difficulty: Difficulty
+    trialCount: number
+  }): void {
+    this.difficulty = options.difficulty
+    this.trialCount = options.trialCount
+    this.rng = new SeededRNG()
   }
 
-  const x0 = rng.range(minStartX, maxStartX)
-  const y0 = rng.range(minStartY, maxStartY)
-
-  const endX = x0 + travelX
-  const endY = y0 + travelY
-
-  const startPoint = { x: x0, y: y0 }
-  const endPoint = { x: endX, y: endY }
-
-  if (!isInsideArena(startPoint) || !isInsideArena(endPoint)) {
-    return null
+  start(now: number): void {
+    this.results = []
+    this.currentTrialIndex = 1
+    this.phase = 'observe'
+    this.trial = createTrial(
+      this.currentTrialIndex,
+      now,
+      this.difficulty,
+      this.rng,
+    )
+    this.feedback = null
   }
 
-  return {
-    index,
-
-    startAt: now,
-    waitStartAt: 0,
-    clickableStartAt: 0,
-
-    observeMs,
-    waitMs,
-    clickWindowMs,
-
-    x0,
-    y0,
-
-    endX,
-    endY,
-
-    vx,
-    vy,
-
-    speed,
-    direction,
-
-    totalMotionMs,
+  private startTrial(index: number, now: number): void {
+    this.currentTrialIndex = index
+    this.phase = 'observe'
+    this.trial = createTrial(index, now, this.difficulty, this.rng)
+    this.feedback = null
   }
-}
 
-export function createTrial(
-  index: number,
-  now: number,
-  difficulty: Difficulty,
-  rng: SeededRNG,
-): TrialConfig {
-  const maxAttempts = 200
+  update(now: number): void {
+    const trial = this.trial
+    if (!trial) return
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const trial = createCandidateTrial(index, now, difficulty, rng)
+    if (this.phase === 'observe') {
+      const elapsed = now - trial.startAt
 
-    if (trial) {
-      return trial
+      if (elapsed >= trial.observeMs) {
+        trial.waitStartAt = now
+        this.phase = 'wait'
+      }
+
+      return
+    }
+
+    if (this.phase === 'wait') {
+      const elapsed = now - trial.waitStartAt
+
+      if (elapsed >= trial.waitMs) {
+        trial.clickableStartAt = now
+        this.phase = 'clickable'
+      }
+
+      return
+    }
+
+    if (this.phase === 'clickable') {
+      const elapsed = now - trial.clickableStartAt
+
+      if (elapsed >= trial.clickWindowMs) {
+        const result = createMissResult(trial, now)
+        this.results.push(result)
+
+        this.feedback = {
+          until: now + PREDICTION_CONFIG.trial.feedbackMs,
+          click: null,
+          actual: result.actual,
+          error: null,
+          trialScore: 0,
+          reactionTimeMs: null,
+          responseLabel: result.responseLabel,
+        }
+
+        this.phase = 'feedback'
+      }
+
+      return
+    }
+
+    if (this.phase === 'feedback') {
+      if (this.feedback && now >= this.feedback.until) {
+        this.goNextTrial(now)
+      }
     }
   }
 
-  /**
-   * fallback แบบปลอดภัยแน่นอน:
-   * ใช้เส้นแนวนอนกลางสนาม
-   */
-  const config = PREDICTION_CONFIG.difficulty[difficulty]
-  const bounds = getArenaBounds()
+  handleClick(click: { x: number; y: number }, now: number): void {
+    const trial = this.trial
+    if (!trial) return
 
-  const observeMs = rng.range(config.observeMs.min, config.observeMs.max)
-  const waitMs = rng.range(config.waitMs.min, config.waitMs.max)
-  const clickWindowMs = config.clickWindowMs
-  const totalMotionMs = observeMs + waitMs + clickWindowMs
-  const totalSeconds = totalMotionMs / 1000
+    if (this.phase !== 'clickable') return
 
-  const speed = rng.range(config.speed.min, config.speed.max)
-  const direction: 1 | -1 = rng.next() < 0.5 ? 1 : -1
-  const vx = direction * speed
-  const vy = 0
+    const result = calculateTrialResult(trial, click, now)
 
-  const travelX = Math.abs(vx) * totalSeconds
-  const safeTravelX = Math.min(travelX, (bounds.maxX - bounds.minX) * 0.75)
+    this.results.push(result)
 
-  const x0 =
-    direction === 1
-      ? bounds.minX + 20
-      : bounds.maxX - 20
+    this.feedback = {
+      until: now + PREDICTION_CONFIG.trial.feedbackMs,
+      click,
+      actual: result.actual,
+      error: result.predictionError,
+      trialScore: result.trialScore,
+      reactionTimeMs: result.reactionTimeMs,
+      responseLabel: result.responseLabel,
+    }
 
-  const endX =
-    direction === 1
-      ? x0 + safeTravelX
-      : x0 - safeTravelX
-
-  const y0 = (bounds.minY + bounds.maxY) / 2
-  const endY = y0
-
-  return {
-    index,
-
-    startAt: now,
-    waitStartAt: 0,
-    clickableStartAt: 0,
-
-    observeMs,
-    waitMs,
-    clickWindowMs,
-
-    x0,
-    y0,
-
-    endX,
-    endY,
-
-    vx: direction === 1 ? safeTravelX / totalSeconds : -safeTravelX / totalSeconds,
-    vy,
-
-    speed,
-    direction,
-
-    totalMotionMs,
-  }
-}
-
-export function getTargetPosition(
-  trial: TrialConfig,
-  elapsedMs: number,
-): Point {
-  /**
-   * ตำแหน่งเป้าหมายคำนวณจากเส้นเดียวกับเส้นประเสมอ
-   */
-  const t = clamp01(elapsedMs / trial.totalMotionMs)
-
-  return {
-    x: lerp(trial.x0, trial.endX, t),
-    y: lerp(trial.y0, trial.endY, t),
-  }
-}
-
-export function getPathGuidePoints(
-  trial: TrialConfig,
-  durationMs?: number,
-  stepMs = 40,
-): Point[] {
-  const totalDuration = durationMs ?? trial.totalMotionMs
-  const points: Point[] = []
-
-  for (let elapsed = 0; elapsed <= totalDuration; elapsed += stepMs) {
-    points.push(getTargetPosition(trial, elapsed))
+    this.phase = 'feedback'
   }
 
-  points.push(getTargetPosition(trial, totalDuration))
+  private goNextTrial(now: number): void {
+    if (this.currentTrialIndex >= this.trialCount) {
+      this.phase = 'finished'
+      this.trial = null
+      this.feedback = null
+      return
+    }
 
-  return points
+    this.startTrial(this.currentTrialIndex + 1, now)
+  }
 }
