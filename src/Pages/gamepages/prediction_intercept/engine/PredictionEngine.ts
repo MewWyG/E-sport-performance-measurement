@@ -13,6 +13,9 @@ import {
   createMissResult,
 } from './PredictionScoring'
 
+/**
+   exportไม่ออก
+   */
 export class PredictionEngine {
   phase: GamePhase
   difficulty: Difficulty
