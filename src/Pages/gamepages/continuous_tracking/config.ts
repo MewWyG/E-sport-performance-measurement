@@ -28,18 +28,30 @@ export const CONTINUOUS_TRACKING_CONFIG = {
       label: 'Easy',
       targetRadius: 44,
       safeMargin: 90,
-      segmentDistance: {
-        min: 190,
-        max: 260,
-      },
+
+      /**
+       * Easy ใช้ระยะที่ยาวและนิ่งกว่า
+       * เปลี่ยนทิศทางไม่ถี่มาก จึงตามง่ายกว่า
+       */
+      distancePlan: [
+        { min: 190, max: 210 },
+        { min: 170, max: 190 },
+        { min: 200, max: 230 },
+        { min: 160, max: 180 },
+        { min: 190, max: 215 },
+        { min: 175, max: 200 },
+      ],
+
       speed: {
         min: 105,
         max: 140,
       },
+
       turnAngleDeg: {
         min: 15,
         max: 45,
       },
+
       candidateCount: 18,
     },
 
@@ -47,38 +59,65 @@ export const CONTINUOUS_TRACKING_CONFIG = {
       label: 'Normal',
       targetRadius: 35,
       safeMargin: 82,
-      segmentDistance: {
-        min: 145,
-        max: 210,
-      },
+
+      /**
+       * Normal ระยะสั้นลงและหลากหลายขึ้น
+       * เปลี่ยนทิศทางถี่กว่า Easy
+       */
+      distancePlan: [
+        { min: 145, max: 165 },
+        { min: 120, max: 145 },
+        { min: 160, max: 190 },
+        { min: 110, max: 135 },
+        { min: 145, max: 170 },
+        { min: 130, max: 155 },
+        { min: 170, max: 205 },
+      ],
+
       speed: {
         min: 165,
-        max: 220,
+        max: 200,
       },
+
       turnAngleDeg: {
         min: 35,
         max: 100,
       },
+
       candidateCount: 24,
     },
 
     hard: {
       label: 'Hard',
-      targetRadius: 31,
-      safeMargin: 82,
-      segmentDistance: {
-        min: 115,
-        max: 175,
-      },
+      targetRadius: 27,
+      safeMargin: 76,
+
+      /**
+       * Hard ระยะสั้นกว่า เปลี่ยนทิศบ่อยกว่า
+       * ความเร็วสูงและมุมเลี้ยวแรงขึ้น
+       */
+      distancePlan: [
+        { min: 110, max: 120 },
+        { min: 105, max: 130 },
+        { min: 140, max: 160 },
+        { min: 120, max: 150 },
+        { min: 90, max: 120 },
+        { min: 110, max: 145 },
+        { min: 120, max: 150 },
+        { min: 125, max: 155 },
+      ],
+
       speed: {
-        min: 215,
-        max: 285,
+        min: 210,
+        max: 250,
       },
+
       turnAngleDeg: {
         min: 55,
-        max: 135,
+        max: 105,
       },
-      candidateCount: 30,
+
+      candidateCount: 32,
     },
   } satisfies Record<Difficulty, DifficultyConfig>,
 
