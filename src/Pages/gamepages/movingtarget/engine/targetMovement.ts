@@ -1,76 +1,174 @@
 import type { Bounds, MovingTarget } from '../types'
-import { randomBetween } from '../utils/random'
 import {
   getStopButtonSafeRect,
   resolveCircleRectCollision,
 } from './playAreaObstacles'
 import { separateOverlappingTargets } from './targetSeparation'
 
+const MAX_MOVEMENT_STEP = 4
+const MIN_DIRECTION_SPEED = 0.001
+
 export function updateTargets(
   targets: MovingTarget[],
   deltaMs: number,
-  now: number,
+  _now: number,
   bounds: Bounds,
 ): MovingTarget[] {
   const stopButtonSafeRect = getStopButtonSafeRect(bounds)
 
-  const movedTargets = targets.map((target) => {
-    let { x, y, vx, vy, nextTurnAt } = target
+  const movedTargets = targets.map((target) =>
+    moveTargetByStepDistance(target, deltaMs, bounds, stopButtonSafeRect),
+  )
 
-    if (target.pattern === 'random' && now >= nextTurnAt) {
-      const speed = Math.max(Math.hypot(vx, vy), 0.08)
-      const angle = Math.random() * Math.PI * 2
+  return separateOverlappingTargets(movedTargets, bounds)
+}
 
-      vx = Math.cos(angle) * speed
-      vy = Math.sin(angle) * speed
-      nextTurnAt = now + randomBetween(380, 700)
+function moveTargetByStepDistance(
+  target: MovingTarget,
+  deltaMs: number,
+  bounds: Bounds,
+  stopButtonSafeRect: ReturnType<typeof getStopButtonSafeRect>,
+): MovingTarget {
+  const speed = Math.max(Math.hypot(target.vx, target.vy), MIN_DIRECTION_SPEED)
+
+  let directionX = target.vx / speed
+  let directionY = target.vy / speed
+
+  let x = target.x
+  let y = target.y
+
+  let remainingFrameDistance = speed * deltaMs
+  let remainingMoveDistance = target.remainingMoveDistance
+
+  const halfSize = target.size / 2
+
+  let guard = 0
+
+  while (remainingFrameDistance > 0.001 && guard < 128) {
+    guard += 1
+
+    if (remainingMoveDistance <= 0.001) {
+      const nextDirection = getRandomDirection()
+
+      directionX = nextDirection.x
+      directionY = nextDirection.y
+      remainingMoveDistance = target.movementStepDistance
     }
 
-    x += vx * deltaMs
-    y += vy * deltaMs
+    const stepDistance = Math.min(
+      remainingFrameDistance,
+      remainingMoveDistance,
+      MAX_MOVEMENT_STEP,
+    )
 
-    const halfSize = target.size / 2
+    x += directionX * stepDistance
+    y += directionY * stepDistance
 
-    if (x <= halfSize) {
-      x = halfSize
-      vx = Math.abs(vx)
-    }
+    const boundaryResolved = resolveBoundaryCollision({
+      x,
+      y,
+      directionX,
+      directionY,
+      halfSize,
+      bounds,
+    })
 
-    if (x >= bounds.width - halfSize) {
-      x = bounds.width - halfSize
-      vx = -Math.abs(vx)
-    }
+    x = boundaryResolved.x
+    y = boundaryResolved.y
+    directionX = boundaryResolved.directionX
+    directionY = boundaryResolved.directionY
 
-    if (y <= halfSize) {
-      y = halfSize
-      vy = Math.abs(vy)
-    }
-
-    if (y >= bounds.height - halfSize) {
-      y = bounds.height - halfSize
-      vy = -Math.abs(vy)
-    }
-
-    const resolved = resolveCircleRectCollision({
+    const rectResolved = resolveCircleRectCollision({
       x,
       y,
       radius: halfSize,
-      vx,
-      vy,
+      vx: directionX * speed,
+      vy: directionY * speed,
       rect: stopButtonSafeRect,
     })
 
-    return {
-      ...target,
-      x: clamp(resolved.x, halfSize, bounds.width - halfSize),
-      y: clamp(resolved.y, halfSize, bounds.height - halfSize),
-      vx: resolved.vx,
-      vy: resolved.vy,
-      nextTurnAt,
-    }
-  })
+    x = clamp(rectResolved.x, halfSize, bounds.width - halfSize)
+    y = clamp(rectResolved.y, halfSize, bounds.height - halfSize)
 
-  return separateOverlappingTargets(movedTargets, bounds)
+    const rectSpeed = Math.max(
+      Math.hypot(rectResolved.vx, rectResolved.vy),
+      MIN_DIRECTION_SPEED,
+    )
+
+    directionX = rectResolved.vx / rectSpeed
+    directionY = rectResolved.vy / rectSpeed
+
+    remainingFrameDistance -= stepDistance
+    remainingMoveDistance -= stepDistance
+  }
+
+  return {
+    ...target,
+    x,
+    y,
+    vx: directionX * speed,
+    vy: directionY * speed,
+    remainingMoveDistance,
+  }
+}
+
+type ResolveBoundaryCollisionParams = {
+  x: number
+  y: number
+  directionX: number
+  directionY: number
+  halfSize: number
+  bounds: Bounds
+}
+
+function resolveBoundaryCollision({
+  x,
+  y,
+  directionX,
+  directionY,
+  halfSize,
+  bounds,
+}: ResolveBoundaryCollisionParams) {
+  if (x <= halfSize) {
+    x = halfSize
+    directionX = Math.abs(directionX)
+  }
+
+  if (x >= bounds.width - halfSize) {
+    x = bounds.width - halfSize
+    directionX = -Math.abs(directionX)
+  }
+
+  if (y <= halfSize) {
+    y = halfSize
+    directionY = Math.abs(directionY)
+  }
+
+  if (y >= bounds.height - halfSize) {
+    y = bounds.height - halfSize
+    directionY = -Math.abs(directionY)
+  }
+
+  const directionLength = Math.max(
+    Math.hypot(directionX, directionY),
+    MIN_DIRECTION_SPEED,
+  )
+
+  return {
+    x,
+    y,
+    directionX: directionX / directionLength,
+    directionY: directionY / directionLength,
+  }
+}
+
+function getRandomDirection() {
+  const angle = Math.random() * Math.PI * 2
+
+  return {
+    x: Math.cos(angle),
+    y: Math.sin(angle),
+  }
 }
 
 function clamp(value: number, min: number, max: number) {

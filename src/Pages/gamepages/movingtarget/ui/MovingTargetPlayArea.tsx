@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import type {
+  GameMode,
   GameState,
   MovingTarget,
   MovingTargetStats,
@@ -11,11 +12,13 @@ import { MovingTargetTarget } from './MovingTargetTarget'
 type MovingTargetPlayAreaProps = {
   areaRef: RefObject<HTMLDivElement | null>
   gameState: GameState
+  selectedMode: GameMode
   targets: MovingTarget[]
   stats: MovingTargetStats
   onAreaClick: () => void
   onStart: () => void
   onStop: () => void
+  onModeChange: (mode: GameMode) => void
   onTargetClick: (target: MovingTarget) => void
   onRetry: () => void
   onBack: () => void
@@ -24,11 +27,13 @@ type MovingTargetPlayAreaProps = {
 export function MovingTargetPlayArea({
   areaRef,
   gameState,
+  selectedMode,
   targets,
   stats,
   onAreaClick,
   onStart,
   onStop,
+  onModeChange,
   onTargetClick,
   onRetry,
   onBack,
@@ -46,7 +51,11 @@ export function MovingTargetPlayArea({
       className="sp-game-grid-bg relative flex min-h-[520px] cursor-crosshair select-none items-center justify-center overflow-hidden rounded-sp-card border-2 border-sp-border p-8 text-center shadow-2xl"
     >
       {gameState === 'ready' && (
-        <MovingTargetReadyState onStart={onStart} />
+        <MovingTargetReadyState
+          selectedMode={selectedMode}
+          onModeChange={onModeChange}
+          onStart={onStart}
+        />
       )}
 
       {gameState === 'running' && (

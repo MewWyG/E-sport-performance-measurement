@@ -1,19 +1,23 @@
-import type { Bounds, Difficulty, MovingTarget, Point } from '../types'
-import { randomBetween } from '../utils/random'
+import type {
+  Bounds,
+  Difficulty,
+  MovingTarget,
+  Point,
+  TargetDistancePlan,
+} from '../types'
 import {
-  isFarEnoughFromCorrectTarget,
-  pickDecoyZones,
-  pickNextTargetZone,
-  pickPointInZone,
-} from './spawnZones'
+  createDecoyPoint,
+  createInitialSpawnPoint,
+  createSpawnPoint,
+} from './spawnPlanner'
 
 type CreateTargetsParams = {
   difficulty: Difficulty
   bounds: Bounds
   now: number
   spawnIndex: number
-  previousZoneId: number | null
-  zoneUseCounts: number[]
+  previousPoint: Point | null
+  distancePlan: TargetDistancePlan
 }
 
 export function createTargets({
@@ -21,54 +25,47 @@ export function createTargets({
   bounds,
   now,
   spawnIndex,
-  previousZoneId,
-  zoneUseCounts,
+  previousPoint,
+  distancePlan,
 }: CreateTargetsParams): MovingTarget[] {
-  const correctZoneId = pickNextTargetZone(previousZoneId, zoneUseCounts)
+  const correctSpawnResult =
+    previousPoint === null
+      ? createInitialSpawnPoint(bounds, difficulty.size)
+      : createSpawnPoint({
+          previousPoint,
+          bounds,
+          targetSize: difficulty.size,
+          plannedDistance: distancePlan.spawnDistance,
+        })
 
-  const correctPosition = pickPointInZone(
-    bounds,
-    difficulty.size,
-    correctZoneId,
-  )
+  const correctTarget = createTarget({
+    id: `correct-${spawnIndex}`,
+    position: correctSpawnResult.point,
+    isCorrect: true,
+    difficulty,
+    now,
+    distancePlan,
+    plannedSpawnDistance:
+      previousPoint === null ? 0 : distancePlan.spawnDistance,
+    actualSpawnDistance: correctSpawnResult.actualDistance,
+  })
 
-  const targets: MovingTarget[] = [
-    createTarget({
-      id: `correct-${spawnIndex}`,
-      position: correctPosition,
-      zoneId: correctZoneId,
-      isCorrect: true,
-      difficulty,
-      now,
-    }),
-  ]
-
-  const decoyZones = pickDecoyZones(
-    correctZoneId,
-    difficulty.decoyCount,
-    zoneUseCounts,
-  )
+  const targets: MovingTarget[] = [correctTarget]
 
   for (let i = 0; i < difficulty.decoyCount; i += 1) {
     const decoySize = Math.max(difficulty.size * 0.9, 28)
-    const decoyZoneId = decoyZones[i]
 
-    let decoyPosition = pickPointInZone(bounds, decoySize, decoyZoneId)
-    let attempt = 0
-
-    while (
-      !isFarEnoughFromCorrectTarget(decoyPosition, correctPosition) &&
-      attempt < 20
-    ) {
-      decoyPosition = pickPointInZone(bounds, decoySize, decoyZoneId)
-      attempt += 1
-    }
+    const decoyPoint = createDecoyPoint({
+      correctPoint: correctSpawnResult.point,
+      bounds,
+      targetSize: decoySize,
+      decoyIndex: i,
+    })
 
     targets.push(
       createTarget({
         id: `decoy-${spawnIndex}-${i}`,
-        position: decoyPosition,
-        zoneId: decoyZoneId,
+        position: decoyPoint,
         isCorrect: false,
         difficulty: {
           ...difficulty,
@@ -76,6 +73,9 @@ export function createTargets({
           speed: difficulty.speed * 0.85,
         },
         now,
+        distancePlan,
+        plannedSpawnDistance: 0,
+        actualSpawnDistance: 0,
       }),
     )
   }
@@ -86,19 +86,23 @@ export function createTargets({
 type CreateTargetParams = {
   id: string
   position: Point
-  zoneId: number
   isCorrect: boolean
   difficulty: Difficulty
   now: number
+  distancePlan: TargetDistancePlan
+  plannedSpawnDistance: number
+  actualSpawnDistance: number
 }
 
 function createTarget({
   id,
   position,
-  zoneId,
   isCorrect,
   difficulty,
   now,
+  distancePlan,
+  plannedSpawnDistance,
+  actualSpawnDistance,
 }: CreateTargetParams): MovingTarget {
   const angle = Math.random() * Math.PI * 2
   const speedMultiplier = isCorrect ? 1 : 0.8
@@ -106,16 +110,31 @@ function createTarget({
 
   return {
     id,
+
     x: position.x,
     y: position.y,
+
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed,
+
     size: Math.max(difficulty.size, 28),
+
     bornAt: now,
     lifetime: difficulty.lifetime,
+
     isCorrect,
     pattern: difficulty.pattern,
-    nextTurnAt: now + randomBetween(450, 850),
-    zoneId,
+
+    anchorX: position.x,
+    anchorY: position.y,
+
+    movementStepDistance: distancePlan.movementStepDistance,
+    remainingMoveDistance: distancePlan.movementStepDistance,
+
+    plannedSpawnDistance,
+    actualSpawnDistance,
+
+    stageIndex: distancePlan.stageIndex,
+    mode: difficulty.mode,
   }
 }
