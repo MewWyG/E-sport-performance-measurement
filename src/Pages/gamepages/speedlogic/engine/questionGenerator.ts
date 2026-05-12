@@ -1,4 +1,5 @@
-import { QUESTION_TYPES, SPEED_LOGIC_CONFIG } from '../constants'
+import { SPEED_LOGIC_CONFIG } from '../constants'
+import type { SpeedLogicConfig } from '../constants'
 import type { AnswerChoice, QuestionType, SpeedLogicQuestion } from '../types'
 import type { Rng } from './rng'
 import { randomInt, shuffleArray } from './rng'
@@ -8,6 +9,9 @@ type GenerateQuestionParams = {
   difficulty: number
   questionCount: number
   now: number
+  questionType: QuestionType
+  scheduleStageId: string
+  config?: SpeedLogicConfig
 }
 
 export function generateQuestion({
@@ -15,56 +19,97 @@ export function generateQuestion({
   difficulty,
   questionCount,
   now,
+  questionType,
+  scheduleStageId,
+  config = SPEED_LOGIC_CONFIG,
 }: GenerateQuestionParams): SpeedLogicQuestion {
-  const availableTypes = getAvailableQuestionTypes(difficulty)
-  const type = availableTypes[randomInt(rng, 0, availableTypes.length - 1)]
-
-  switch (type) {
+  switch (questionType) {
     case 'addition':
-      return generateAdditionQuestion(rng, difficulty, questionCount, now)
+      return generateAdditionQuestion({
+        rng,
+        difficulty,
+        questionCount,
+        now,
+        scheduleStageId,
+        config,
+      })
 
     case 'subtraction':
-      return generateSubtractionQuestion(rng, difficulty, questionCount, now)
+      return generateSubtractionQuestion({
+        rng,
+        difficulty,
+        questionCount,
+        now,
+        scheduleStageId,
+        config,
+      })
 
     case 'multiplication':
-      return generateMultiplicationQuestion(rng, difficulty, questionCount, now)
+      return generateMultiplicationQuestion({
+        rng,
+        difficulty,
+        questionCount,
+        now,
+        scheduleStageId,
+        config,
+      })
 
     case 'comparison':
-      return generateComparisonQuestion(rng, difficulty, questionCount, now)
+      return generateComparisonQuestion({
+        rng,
+        difficulty,
+        questionCount,
+        now,
+        scheduleStageId,
+      })
 
     case 'odd_even':
-      return generateOddEvenQuestion(rng, difficulty, questionCount, now)
+      return generateOddEvenQuestion({
+        rng,
+        difficulty,
+        questionCount,
+        now,
+        scheduleStageId,
+      })
 
     case 'true_false':
-      return generateTrueFalseQuestion(rng, difficulty, questionCount, now)
+      return generateTrueFalseQuestion({
+        rng,
+        difficulty,
+        questionCount,
+        now,
+        scheduleStageId,
+      })
 
     default:
-      return generateAdditionQuestion(rng, difficulty, questionCount, now)
+      return generateAdditionQuestion({
+        rng,
+        difficulty,
+        questionCount,
+        now,
+        scheduleStageId,
+        config,
+      })
   }
 }
 
-function getAvailableQuestionTypes(difficulty: number): QuestionType[] {
-  if (difficulty <= 2) {
-    return ['addition', 'comparison', 'odd_even']
-  }
-
-  if (difficulty <= 4) {
-    return ['addition', 'subtraction', 'comparison', 'odd_even']
-  }
-
-  if (difficulty <= 7) {
-    return ['addition', 'subtraction', 'multiplication', 'comparison', 'odd_even']
-  }
-
-  return [...QUESTION_TYPES]
+type QuestionFactoryParams = {
+  rng: Rng
+  difficulty: number
+  questionCount: number
+  now: number
+  scheduleStageId: string
+  config?: SpeedLogicConfig
 }
 
-function generateAdditionQuestion(
-  rng: Rng,
-  difficulty: number,
-  questionCount: number,
-  now: number,
-): SpeedLogicQuestion {
+function generateAdditionQuestion({
+  rng,
+  difficulty,
+  questionCount,
+  now,
+  scheduleStageId,
+  config = SPEED_LOGIC_CONFIG,
+}: QuestionFactoryParams): SpeedLogicQuestion {
   const max = 8 + difficulty * 8
   const a = randomInt(rng, 1, max)
   const b = randomInt(rng, 1, max)
@@ -78,15 +123,19 @@ function generateAdditionQuestion(
     correctAnswer: answer,
     difficulty,
     now,
+    scheduleStageId,
+    config,
   })
 }
 
-function generateSubtractionQuestion(
-  rng: Rng,
-  difficulty: number,
-  questionCount: number,
-  now: number,
-): SpeedLogicQuestion {
+function generateSubtractionQuestion({
+  rng,
+  difficulty,
+  questionCount,
+  now,
+  scheduleStageId,
+  config = SPEED_LOGIC_CONFIG,
+}: QuestionFactoryParams): SpeedLogicQuestion {
   const max = 10 + difficulty * 10
   const a = randomInt(rng, 5, max)
   const b = randomInt(rng, 1, a)
@@ -100,15 +149,19 @@ function generateSubtractionQuestion(
     correctAnswer: answer,
     difficulty,
     now,
+    scheduleStageId,
+    config,
   })
 }
 
-function generateMultiplicationQuestion(
-  rng: Rng,
-  difficulty: number,
-  questionCount: number,
-  now: number,
-): SpeedLogicQuestion {
+function generateMultiplicationQuestion({
+  rng,
+  difficulty,
+  questionCount,
+  now,
+  scheduleStageId,
+  config = SPEED_LOGIC_CONFIG,
+}: QuestionFactoryParams): SpeedLogicQuestion {
   const maxA = Math.min(12, 3 + difficulty)
   const maxB = Math.min(12, 3 + difficulty)
 
@@ -124,17 +177,21 @@ function generateMultiplicationQuestion(
     correctAnswer: answer,
     difficulty,
     now,
+    scheduleStageId,
+    config,
   })
 }
 
-function generateComparisonQuestion(
-  rng: Rng,
-  difficulty: number,
-  questionCount: number,
-  now: number,
-): SpeedLogicQuestion {
+function generateComparisonQuestion({
+  rng,
+  difficulty,
+  questionCount,
+  now,
+  scheduleStageId,
+}: QuestionFactoryParams): SpeedLogicQuestion {
   const max = 10 + difficulty * 12
-  let left = randomInt(rng, 1, max)
+
+  const left = randomInt(rng, 1, max)
   let right = randomInt(rng, 1, max)
 
   while (left === right) {
@@ -159,20 +216,22 @@ function generateComparisonQuestion(
   return {
     id: createQuestionId(now, questionCount),
     type: 'comparison',
-    prompt: `เลขไหนมากกว่า?`,
+    prompt: 'เลขไหนมากกว่า?',
     choices,
     correctChoiceId: correctValue === left ? 'left' : 'right',
     difficulty,
     createdAt: now,
+    scheduleStageId,
   }
 }
 
-function generateOddEvenQuestion(
-  rng: Rng,
-  difficulty: number,
-  questionCount: number,
-  now: number,
-): SpeedLogicQuestion {
+function generateOddEvenQuestion({
+  rng,
+  difficulty,
+  questionCount,
+  now,
+  scheduleStageId,
+}: QuestionFactoryParams): SpeedLogicQuestion {
   const max = 20 + difficulty * 15
   const value = randomInt(rng, 1, max)
   const isEven = value % 2 === 0
@@ -198,21 +257,24 @@ function generateOddEvenQuestion(
     correctChoiceId: isEven ? 'even' : 'odd',
     difficulty,
     createdAt: now,
+    scheduleStageId,
   }
 }
 
-function generateTrueFalseQuestion(
-  rng: Rng,
-  difficulty: number,
-  questionCount: number,
-  now: number,
-): SpeedLogicQuestion {
+function generateTrueFalseQuestion({
+  rng,
+  difficulty,
+  questionCount,
+  now,
+  scheduleStageId,
+}: QuestionFactoryParams): SpeedLogicQuestion {
   const max = 10 + difficulty * 8
   const a = randomInt(rng, 1, max)
   const b = randomInt(rng, 1, max)
   const actualAnswer = a + b
 
   const shouldBeTrue = randomInt(rng, 0, 1) === 1
+
   const shownAnswer = shouldBeTrue
     ? actualAnswer
     : actualAnswer + randomInt(rng, 1, Math.max(2, difficulty + 1))
@@ -238,6 +300,7 @@ function generateTrueFalseQuestion(
     correctChoiceId: shouldBeTrue ? 'true' : 'false',
     difficulty,
     createdAt: now,
+    scheduleStageId,
   }
 }
 
@@ -249,6 +312,8 @@ type BuildNumericQuestionParams = {
   correctAnswer: number
   difficulty: number
   now: number
+  scheduleStageId: string
+  config: SpeedLogicConfig
 }
 
 function buildNumericQuestion({
@@ -259,17 +324,21 @@ function buildNumericQuestion({
   correctAnswer,
   difficulty,
   now,
+  scheduleStageId,
+  config,
 }: BuildNumericQuestionParams): SpeedLogicQuestion {
-  const choices = createNumericChoices(rng, correctAnswer, difficulty)
+  const choices = createNumericChoices(rng, correctAnswer, difficulty, config)
 
   return {
     id,
     type,
     prompt,
     choices,
-    correctChoiceId: choices.find((choice) => choice.value === correctAnswer)?.id ?? '',
+    correctChoiceId:
+      choices.find((choice) => choice.value === correctAnswer)?.id ?? '',
     difficulty,
     createdAt: now,
+    scheduleStageId,
   }
 }
 
@@ -277,13 +346,14 @@ function createNumericChoices(
   rng: Rng,
   correctAnswer: number,
   difficulty: number,
+  config: SpeedLogicConfig,
 ): AnswerChoice[] {
   const values = new Set<number>()
   values.add(correctAnswer)
 
   const spread = Math.max(3, difficulty * 2)
 
-  while (values.size < SPEED_LOGIC_CONFIG.answerChoiceCount) {
+  while (values.size < config.answerChoiceCount) {
     const offset = randomInt(rng, -spread, spread)
 
     if (offset === 0) continue

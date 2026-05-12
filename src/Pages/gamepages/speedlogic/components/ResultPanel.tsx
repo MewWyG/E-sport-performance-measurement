@@ -18,16 +18,50 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
         <p className="mt-2 text-sm leading-relaxed text-sp-text-muted">
           ข้อมูลชุดนี้ถูกเก็บใน localStorage และสามารถนำไปส่ง API เพื่อบันทึกลงฐานข้อมูลได้
+          พร้อมข้อมูล test mode และ question schedule สำหรับตรวจสอบความเสมอภาคของการทดสอบ
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <ResultItem label="Score" value={`${result.score}`} />
-        <ResultItem label="Accuracy" value={`${result.accuracy}%`} />
-        <ResultItem label="Avg Response" value={`${result.avgResponseTimeMs} ms`} />
-        <ResultItem label="Throughput" value={`${result.throughput} correct/sec`} />
-        <ResultItem label="Max Difficulty" value={`${result.maxDifficulty}`} />
-        <ResultItem label="Total Answers" value={`${result.totalAnswers}`} />
+        <ResultItem
+          label="Test Mode"
+          value={result.testMode.toUpperCase()}
+        />
+
+        <ResultItem
+          label="Schedule Version"
+          value={result.scheduleVersion}
+        />
+
+        <ResultItem
+          label="Score"
+          value={`${result.score}`}
+        />
+
+        <ResultItem
+          label="Accuracy"
+          value={`${result.accuracy}%`}
+        />
+
+        <ResultItem
+          label="Avg Response"
+          value={`${result.avgResponseTimeMs} ms`}
+        />
+
+        <ResultItem
+          label="Throughput"
+          value={`${result.throughput} correct/sec`}
+        />
+
+        <ResultItem
+          label="Max Difficulty"
+          value={`${result.maxDifficulty}`}
+        />
+
+        <ResultItem
+          label="Total Answers"
+          value={`${result.totalAnswers}`}
+        />
       </div>
 
       <details className="mt-5">
@@ -55,7 +89,7 @@ function ResultItem({ label, value }: ResultItemProps) {
         {label}
       </p>
 
-      <p className="mt-1 text-xl font-black text-sp-text">
+      <p className="mt-1 break-words text-xl font-black text-sp-text">
         {value}
       </p>
     </div>

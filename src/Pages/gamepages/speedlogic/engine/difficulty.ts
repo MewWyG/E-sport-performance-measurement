@@ -1,10 +1,14 @@
 import { SPEED_LOGIC_CONFIG } from '../constants'
+import type { SpeedLogicConfig } from '../constants'
 
 type DifficultyParams = {
   currentDifficulty: number
   currentStreak: number
   recentMistakes: number
   isCorrect: boolean
+  config?: SpeedLogicConfig
+  stageMinDifficulty?: number
+  stageMaxDifficulty?: number
 }
 
 export function updateDifficulty({
@@ -12,24 +16,38 @@ export function updateDifficulty({
   currentStreak,
   recentMistakes,
   isCorrect,
+  config = SPEED_LOGIC_CONFIG,
+  stageMinDifficulty,
+  stageMaxDifficulty,
 }: DifficultyParams): {
   nextDifficulty: number
   nextStreak: number
   nextRecentMistakes: number
 } {
+  const minDifficulty = stageMinDifficulty ?? config.minDifficulty
+  const maxDifficulty = stageMaxDifficulty ?? config.maxDifficulty
+
   if (isCorrect) {
     const nextStreak = currentStreak + 1
 
-    if (nextStreak >= SPEED_LOGIC_CONFIG.streakToIncreaseDifficulty) {
+    if (nextStreak >= config.streakToIncreaseDifficulty) {
       return {
-        nextDifficulty: clampDifficulty(currentDifficulty + 1),
+        nextDifficulty: clampDifficulty(
+          currentDifficulty + 1,
+          minDifficulty,
+          maxDifficulty,
+        ),
         nextStreak: 0,
         nextRecentMistakes: 0,
       }
     }
 
     return {
-      nextDifficulty: currentDifficulty,
+      nextDifficulty: clampDifficulty(
+        currentDifficulty,
+        minDifficulty,
+        maxDifficulty,
+      ),
       nextStreak,
       nextRecentMistakes: 0,
     }
@@ -37,24 +55,33 @@ export function updateDifficulty({
 
   const nextRecentMistakes = recentMistakes + 1
 
-  if (nextRecentMistakes >= SPEED_LOGIC_CONFIG.mistakesToDecreaseDifficulty) {
+  if (nextRecentMistakes >= config.mistakesToDecreaseDifficulty) {
     return {
-      nextDifficulty: clampDifficulty(currentDifficulty - 1),
+      nextDifficulty: clampDifficulty(
+        currentDifficulty - 1,
+        minDifficulty,
+        maxDifficulty,
+      ),
       nextStreak: 0,
       nextRecentMistakes: 0,
     }
   }
 
   return {
-    nextDifficulty: currentDifficulty,
+    nextDifficulty: clampDifficulty(
+      currentDifficulty,
+      minDifficulty,
+      maxDifficulty,
+    ),
     nextStreak: 0,
     nextRecentMistakes,
   }
 }
 
-function clampDifficulty(value: number): number {
-  return Math.min(
-    SPEED_LOGIC_CONFIG.maxDifficulty,
-    Math.max(SPEED_LOGIC_CONFIG.minDifficulty, value),
-  )
+export function clampDifficulty(
+  value: number,
+  minDifficulty: number,
+  maxDifficulty: number,
+): number {
+  return Math.min(maxDifficulty, Math.max(minDifficulty, value))
 }

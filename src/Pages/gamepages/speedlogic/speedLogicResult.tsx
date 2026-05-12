@@ -58,6 +58,8 @@ export default function SpeedLogicResultPage() {
     )
   }
 
+  const config = result.configSnapshot
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-sp-bg font-sans text-sp-text">
       <SiteHeader />
@@ -129,6 +131,12 @@ export default function SpeedLogicResultPage() {
             />
 
             <MetricCard
+              label="Test Mode"
+              value={result.testMode.toUpperCase()}
+              helper="โหมดที่ใช้ในการทดสอบ"
+            />
+
+            <MetricCard
               label="Accuracy"
               value={`${result.accuracy}%`}
               helper="เปอร์เซ็นต์คำตอบที่ถูกต้อง"
@@ -138,12 +146,6 @@ export default function SpeedLogicResultPage() {
               label="Avg Response"
               value={`${result.avgResponseTimeMs} ms`}
               helper="เวลาตอบเฉลี่ยต่อคำถาม"
-            />
-
-            <MetricCard
-              label="Fastest Response"
-              value={`${result.fastestResponseMs} ms`}
-              helper="คำตอบที่เร็วที่สุด"
             />
 
             <MetricCard
@@ -173,6 +175,7 @@ export default function SpeedLogicResultPage() {
                 <ResultRow label="Total Answers" value={`${result.totalAnswers}`} />
                 <ResultRow label="Correct Answers" value={`${result.correctAnswers}`} />
                 <ResultRow label="Wrong Answers" value={`${result.wrongAnswers}`} />
+                <ResultRow label="Fastest Response" value={`${result.fastestResponseMs} ms`} />
                 <ResultRow label="Slowest Response" value={`${result.slowestResponseMs} ms`} />
                 <ResultRow label="Final Difficulty" value={`${result.finalDifficulty}`} />
                 <ResultRow label="Duration" value={`${Math.round(result.durationMs / 1000)} s`} />
@@ -182,6 +185,136 @@ export default function SpeedLogicResultPage() {
 
             <ResultPanel result={result} />
           </div>
+
+          <section className="mt-8 rounded-sp-card border border-sp-border bg-sp-glass p-6 backdrop-blur-xl">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-sp-secondary">
+              Fairness Configuration
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-sp-text">
+              ข้อมูลโหมดและ Question Schedule
+            </h2>
+
+            <p className="mt-2 text-sm leading-relaxed text-sp-text-muted">
+              ข้อมูลส่วนนี้ใช้ตรวจสอบว่า session นี้เล่นด้วยโหมดอะไร และใช้ schedule
+              ชุดไหน เพื่อให้ backend สามารถเปรียบเทียบผลของผู้เล่นในกลุ่มเดียวกันได้ยุติธรรมขึ้น
+            </p>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <ConfigCard
+                label="Test Mode"
+                value={result.testMode.toUpperCase()}
+              />
+
+              <ConfigCard
+                label="Schedule Version"
+                value={result.scheduleVersion}
+              />
+
+              <ConfigCard
+                label="Initial Difficulty"
+                value={`${config.initialDifficulty}`}
+              />
+
+              <ConfigCard
+                label="Difficulty Range"
+                value={`${config.minDifficulty}-${config.maxDifficulty}`}
+              />
+
+              <ConfigCard
+                label="Answer Choices"
+                value={`${config.answerChoiceCount}`}
+              />
+
+              <ConfigCard
+                label="Max Same Type Streak"
+                value={`${config.maxSameTypeStreak}`}
+              />
+
+              <ConfigCard
+                label="Increase Rule"
+                value={`${config.streakToIncreaseDifficulty} correct streak`}
+              />
+
+              <ConfigCard
+                label="Decrease Rule"
+                value={`${config.mistakesToDecreaseDifficulty} mistakes`}
+              />
+
+              <ConfigCard
+                label="Min Answer Delay"
+                value={`${config.minAnswerDelayMs} ms`}
+              />
+            </div>
+          </section>
+
+          <section className="mt-8 rounded-sp-card border border-sp-border bg-sp-glass p-6 backdrop-blur-xl">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-sp-secondary">
+              Schedule Stage Breakdown
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-sp-text">
+              สถิติแยกตามช่วงเวลา
+            </h2>
+
+            <p className="mt-2 text-sm leading-relaxed text-sp-text-muted">
+              แต่ละช่วงเวลาจะกำหนดประเภทโจทย์และกรอบ difficulty ที่แตกต่างกัน
+              เพื่อให้ทุก session มีโครงความยากใกล้เคียงกัน แต่ยังคงสุ่มโจทย์ภายในกรอบนั้น
+            </p>
+
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-sp-border text-sp-text-subtle">
+                    <th className="py-3 pr-4 font-bold">Stage</th>
+                    <th className="py-3 pr-4 font-bold">Time</th>
+                    <th className="py-3 pr-4 font-bold">Allowed Types</th>
+                    <th className="py-3 pr-4 font-bold">Total</th>
+                    <th className="py-3 pr-4 font-bold">Correct</th>
+                    <th className="py-3 pr-4 font-bold">Accuracy</th>
+                    <th className="py-3 pr-4 font-bold">Avg Response</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {Object.values(result.scheduleStageBreakdown).map((stage) => (
+                    <tr
+                      key={stage.stageId}
+                      className="border-b border-sp-border/70 last:border-b-0"
+                    >
+                      <td className="py-3 pr-4 font-bold text-sp-text">
+                        {stage.stageId}
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        {stage.startSec}s - {stage.endSec}s
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        {stage.allowedTypes.map(formatQuestionType).join(', ')}
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        {stage.total}
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        {stage.correct}
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        {stage.accuracy}%
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        {stage.avgResponseTimeMs} ms
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           <section className="mt-8 rounded-sp-card border border-sp-border bg-sp-glass p-6 backdrop-blur-xl">
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-sp-secondary">
@@ -242,6 +375,25 @@ function ResultRow({ label, value }: ResultRowProps) {
   )
 }
 
+type ConfigCardProps = {
+  label: string
+  value: string
+}
+
+function ConfigCard({ label, value }: ConfigCardProps) {
+  return (
+    <div className="rounded-sp-xl border border-sp-border bg-sp-surface/55 p-5">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-sp-text-subtle">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-lg font-black text-sp-text">
+        {value}
+      </p>
+    </div>
+  )
+}
+
 type BreakdownRowProps = {
   label: string
   value: string
@@ -268,5 +420,6 @@ function formatQuestionType(type: string) {
   if (type === 'comparison') return 'Comparison'
   if (type === 'odd_even') return 'Odd / Even'
   if (type === 'true_false') return 'True / False'
+
   return type
 }
