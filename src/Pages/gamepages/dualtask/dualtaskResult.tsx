@@ -58,6 +58,8 @@ export default function DualTaskResultPage() {
     )
   }
 
+  const config = result.configSnapshot
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-sp-bg font-sans text-sp-text">
       <SiteHeader />
@@ -82,6 +84,7 @@ export default function DualTaskResultPage() {
                 d="M10 19l-7-7m0 0l7-7m-7 7h18"
               />
             </svg>
+
             <span>กลับไปคลังเกม</span>
           </Link>
 
@@ -129,6 +132,12 @@ export default function DualTaskResultPage() {
             />
 
             <MetricCard
+              label="Difficulty Mode"
+              value={result.difficultyMode.toUpperCase()}
+              helper="โหมดที่ใช้ในการทดสอบ"
+            />
+
+            <MetricCard
               label="Tracking Accuracy"
               value={`${result.trackingAccuracy}%`}
               helper="เปอร์เซ็นต์ที่เมาส์อยู่ในเป้าหมาย"
@@ -151,12 +160,6 @@ export default function DualTaskResultPage() {
               value={`${result.stability}%`}
               helper="ความนิ่งของการติดตาม"
             />
-
-            <MetricCard
-              label="Completed Sequences"
-              value={`${result.completedSequences}`}
-              helper="จำนวน sequence ที่ทำครบ"
-            />
           </div>
 
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -170,17 +173,162 @@ export default function DualTaskResultPage() {
               </h2>
 
               <div className="mt-5 space-y-4">
-                <ResultRow label="Average Distance" value={`${result.averageDistance} px`} />
-                <ResultRow label="Total Key Inputs" value={`${result.totalKeyInputs}`} />
-                <ResultRow label="Correct Key Inputs" value={`${result.correctKeyInputs}`} />
-                <ResultRow label="Wrong Key Inputs" value={`${result.wrongKeyInputs}`} />
-                <ResultRow label="Duration" value={`${Math.round(result.durationMs / 1000)} s`} />
-                <ResultRow label="Played At" value={new Date(result.playedAt).toLocaleString()} />
+                <ResultRow
+                  label="Average Distance"
+                  value={`${result.averageDistance} px`}
+                />
+
+                <ResultRow
+                  label="Completed Sequences"
+                  value={`${result.completedSequences}`}
+                />
+
+                <ResultRow
+                  label="Total Key Inputs"
+                  value={`${result.totalKeyInputs}`}
+                />
+
+                <ResultRow
+                  label="Correct Key Inputs"
+                  value={`${result.correctKeyInputs}`}
+                />
+
+                <ResultRow
+                  label="Wrong Key Inputs"
+                  value={`${result.wrongKeyInputs}`}
+                />
+
+                <ResultRow
+                  label="Duration"
+                  value={`${Math.round(result.durationMs / 1000)} s`}
+                />
+
+                <ResultRow
+                  label="Played At"
+                  value={new Date(result.playedAt).toLocaleString()}
+                />
               </div>
             </section>
 
             <ResultPanel result={result} />
           </div>
+
+          <section className="mt-8 rounded-sp-card border border-sp-border bg-sp-glass p-6 backdrop-blur-xl">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-sp-secondary">
+              Fairness Configuration
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-sp-text">
+              ข้อมูลโหมดและ Movement Schedule
+            </h2>
+
+            <p className="mt-2 text-sm leading-relaxed text-sp-text-muted">
+              ข้อมูลส่วนนี้ใช้ตรวจสอบว่า session นี้เล่นด้วยโหมดอะไร และใช้ config
+              ชุดไหน เพื่อให้ backend สามารถเปรียบเทียบผลของผู้เล่นในกลุ่มเดียวกันได้ยุติธรรมขึ้น
+            </p>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <ConfigCard
+                label="Difficulty Mode"
+                value={result.difficultyMode.toUpperCase()}
+              />
+
+              <ConfigCard
+                label="Schedule Version"
+                value={result.movementScheduleVersion}
+              />
+
+              <ConfigCard
+                label="Target Radius"
+                value={`${config.targetRadius}px`}
+              />
+
+              <ConfigCard
+                label="Base Speed"
+                value={`${config.targetBaseSpeed}`}
+              />
+
+              <ConfigCard
+                label="Max Speed"
+                value={`${config.targetMaxSpeed}`}
+              />
+
+              <ConfigCard
+                label="Sequence Length"
+                value={`${config.minSequenceLength}-${config.maxSequenceLength}`}
+              />
+
+              <ConfigCard
+                label="Sequence Lifetime"
+                value={`${config.sequenceLifetimeMs} ms`}
+              />
+
+              <ConfigCard
+                label="Spawn Delay"
+                value={`${config.sequenceSpawnDelayMs} ms`}
+              />
+
+              <ConfigCard
+                label="Canvas"
+                value={`${config.canvasWidth} × ${config.canvasHeight}`}
+              />
+            </div>
+          </section>
+
+          <section className="mt-8 rounded-sp-card border border-sp-border bg-sp-glass p-6 backdrop-blur-xl">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-sp-secondary">
+              Movement Stages
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-sp-text">
+              ตารางความยากของการเคลื่อนที่ตามเวลา
+            </h2>
+
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-sp-border text-sp-text-subtle">
+                    <th className="py-3 pr-4 font-bold">Time</th>
+                    <th className="py-3 pr-4 font-bold">Radius</th>
+                    <th className="py-3 pr-4 font-bold">Speed</th>
+                    <th className="py-3 pr-4 font-bold">Acceleration</th>
+                    <th className="py-3 pr-4 font-bold">Direction Rate</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {config.movementStages.map((stage, index) => (
+                    <tr
+                      key={`${stage.startSec}-${stage.endSec}-${index}`}
+                      className="border-b border-sp-border/70 last:border-b-0"
+                    >
+                      <td className="py-3 pr-4 font-bold text-sp-text">
+                        {stage.startSec}s - {stage.endSec}s
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        {stage.movementRadius >= 9999
+                          ? 'Full canvas'
+                          : `${stage.movementRadius}px`}
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        ×{stage.speedMultiplier}
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        ×{stage.accelerationMultiplier}
+                      </td>
+
+                      <td className="py-3 pr-4 text-sp-text-muted">
+                        ×{stage.directionChangeRate}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </section>
       </main>
 
@@ -197,8 +345,32 @@ type ResultRowProps = {
 function ResultRow({ label, value }: ResultRowProps) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-sp-border pb-3 last:border-b-0 last:pb-0">
-      <span className="text-sm text-sp-text-muted">{label}</span>
-      <span className="text-sm font-black text-sp-text">{value}</span>
+      <span className="text-sm text-sp-text-muted">
+        {label}
+      </span>
+
+      <span className="text-sm font-black text-sp-text">
+        {value}
+      </span>
+    </div>
+  )
+}
+
+type ConfigCardProps = {
+  label: string
+  value: string
+}
+
+function ConfigCard({ label, value }: ConfigCardProps) {
+  return (
+    <div className="rounded-sp-xl border border-sp-border bg-sp-surface/55 p-5">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-sp-text-subtle">
+        {label}
+      </p>
+
+      <p className="mt-2 text-lg font-black text-sp-text">
+        {value}
+      </p>
     </div>
   )
 }

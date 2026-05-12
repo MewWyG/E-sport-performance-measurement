@@ -1,4 +1,5 @@
 import { AVAILABLE_KEYS, DUAL_TASK_CONFIG } from '../constants'
+import type { DualTaskConfig } from '../constants'
 import type { KeySequence } from '../types'
 import type { Rng } from './rng'
 import { randomInt } from './rng'
@@ -7,12 +8,13 @@ export function generateKeySequence(
   now: number,
   rng: Rng,
   sequenceCount: number,
+  config: DualTaskConfig = DUAL_TASK_CONFIG,
 ): KeySequence {
   const difficultyBonus = Math.floor(sequenceCount / 5)
 
   const sequenceLength = Math.min(
-    DUAL_TASK_CONFIG.maxSequenceLength,
-    DUAL_TASK_CONFIG.minSequenceLength + difficultyBonus,
+    config.maxSequenceLength,
+    config.minSequenceLength + difficultyBonus,
   )
 
   const keys = Array.from({ length: sequenceLength }, () => {
@@ -25,6 +27,6 @@ export function generateKeySequence(
     keys,
     currentIndex: 0,
     startedAt: now,
-    expiresAt: now + DUAL_TASK_CONFIG.sequenceLifetimeMs,
+    expiresAt: now + config.sequenceLifetimeMs,
   }
 }

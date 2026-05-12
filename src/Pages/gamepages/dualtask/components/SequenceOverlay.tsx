@@ -7,10 +7,6 @@ type SequenceOverlayProps = {
 export function SequenceOverlay({ sequence }: SequenceOverlayProps) {
   return (
     <div className="rounded-sp-card border border-sp-border bg-sp-glass/85 px-5 py-4 text-center shadow-sp-brand backdrop-blur-xl">
-      <p className="text-xs font-bold uppercase tracking-[0.24em] text-sp-secondary">
-        Sequence
-      </p>
-
       <h3 className="mt-2 text-lg font-black text-sp-text">
         กดปุ่มตามลำดับ
       </h3>

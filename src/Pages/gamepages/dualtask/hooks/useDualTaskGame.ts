@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AVAILABLE_KEYS, DUAL_TASK_CONFIG } from '../constants'
+import {
+  AVAILABLE_KEYS,
+  DEFAULT_DUAL_TASK_DIFFICULTY,
+  DUAL_TASK_CONFIG,
+  DUAL_TASK_DIFFICULTY_PRESETS,
+} from '../constants'
+import type { DualTaskConfig, DualTaskDifficulty } from '../constants'
 import {
   calculateAverage,
   calculateMultitaskScore,
@@ -10,6 +16,7 @@ import { generateKeySequence } from '../engine/sequenceGenerator'
 import { createInitialTarget, updateTargetPosition } from '../engine/targetPhysics'
 import { createRng, type Rng } from '../engine/rng'
 import type {
+  DualTaskConfigSnapshot,
   DualTaskLiveStats,
   DualTaskResult,
   GameStatus,
@@ -19,37 +26,80 @@ import type {
 } from '../types'
 
 type UseDualTaskGameOptions = {
+  initialDifficultyMode?: DualTaskDifficulty
   onFinish?: (result: DualTaskResult) => void
 }
 
-const initialLiveStats: DualTaskLiveStats = {
-  timeLeftMs: DUAL_TASK_CONFIG.durationMs,
-  trackingAccuracy: 0,
-  averageDistance: 0,
-  inputAccuracy: 0,
-  completedSequences: 0,
-  wrongInputs: 0,
-  avgInputReactionMs: 0,
-  multitaskScore: 0,
+function createInitialLiveStats(config: DualTaskConfig): DualTaskLiveStats {
+  return {
+    timeLeftMs: config.durationMs,
+    trackingAccuracy: 0,
+    averageDistance: 0,
+    inputAccuracy: 0,
+    completedSequences: 0,
+    wrongInputs: 0,
+    avgInputReactionMs: 0,
+    multitaskScore: 0,
+  }
 }
 
-export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
+function createConfigSnapshot(config: DualTaskConfig): DualTaskConfigSnapshot {
+  return {
+    label: config.label,
+    durationMs: config.durationMs,
+
+    canvasWidth: config.canvasWidth,
+    canvasHeight: config.canvasHeight,
+
+    targetRadius: config.targetRadius,
+    targetBaseSpeed: config.targetBaseSpeed,
+    targetMaxSpeed: config.targetMaxSpeed,
+
+    sequenceSpawnDelayMs: config.sequenceSpawnDelayMs,
+    sequenceLifetimeMs: config.sequenceLifetimeMs,
+
+    minSequenceLength: config.minSequenceLength,
+    maxSequenceLength: config.maxSequenceLength,
+
+    movementScheduleVersion: config.movementScheduleVersion,
+    movementStages: config.movementStages.map((stage) => ({ ...stage })),
+  }
+}
+
+function getDualTaskConfig(mode: DualTaskDifficulty): DualTaskConfig {
+  return DUAL_TASK_DIFFICULTY_PRESETS[mode]
+}
+
+export function useDualTaskGame({
+  initialDifficultyMode = DEFAULT_DUAL_TASK_DIFFICULTY,
+  onFinish,
+}: UseDualTaskGameOptions = {}) {
+  const initialConfig = getDualTaskConfig(initialDifficultyMode)
+
   const [status, setStatus] = useState<GameStatus>('idle')
+  const [difficultyMode, setDifficultyModeState] =
+    useState<DualTaskDifficulty>(initialDifficultyMode)
   const [activeSequence, setActiveSequence] = useState<KeySequence | null>(null)
-  const [liveStats, setLiveStats] =
-    useState<DualTaskLiveStats>(initialLiveStats)
+  const [liveStats, setLiveStats] = useState<DualTaskLiveStats>(
+    createInitialLiveStats(initialConfig),
+  )
   const [latestResult, setLatestResult] = useState<DualTaskResult | null>(null)
 
   const statusRef = useRef<GameStatus>('idle')
+  const difficultyModeRef = useRef<DualTaskDifficulty>(initialDifficultyMode)
+  const selectedConfigRef = useRef<DualTaskConfig>(initialConfig)
+
   const animationFrameRef = useRef<number | null>(null)
 
   const sessionSeedRef = useRef<number>(Date.now())
   const rngRef = useRef<Rng>(createRng(sessionSeedRef.current))
 
-  const targetRef = useRef<Target>(createInitialTarget(rngRef.current))
+  const targetRef = useRef<Target>(
+    createInitialTarget(rngRef.current, selectedConfigRef.current),
+  )
   const pointerRef = useRef<Point>({
-    x: DUAL_TASK_CONFIG.canvasWidth / 2,
-    y: DUAL_TASK_CONFIG.canvasHeight / 2,
+    x: selectedConfigRef.current.canvasWidth / 2,
+    y: selectedConfigRef.current.canvasHeight / 2,
   })
 
   const activeSequenceRef = useRef<KeySequence | null>(null)
@@ -78,14 +128,16 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
   }, [onFinish])
 
   const resetInternalState = useCallback(() => {
+    const config = selectedConfigRef.current
+
     sessionSeedRef.current = Date.now()
     rngRef.current = createRng(sessionSeedRef.current)
 
-    targetRef.current = createInitialTarget(rngRef.current)
+    targetRef.current = createInitialTarget(rngRef.current, config)
 
     pointerRef.current = {
-      x: DUAL_TASK_CONFIG.canvasWidth / 2,
-      y: DUAL_TASK_CONFIG.canvasHeight / 2,
+      x: config.canvasWidth / 2,
+      y: config.canvasHeight / 2,
     }
 
     activeSequenceRef.current = null
@@ -93,6 +145,10 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
 
     nextSequenceAtRef.current = 0
     sequenceCountRef.current = 0
+
+    startedAtRef.current = 0
+    lastFrameAtRef.current = 0
+    lastStatsUpdateAtRef.current = 0
 
     trackingSamplesRef.current = 0
     onTargetSamplesRef.current = 0
@@ -106,9 +162,28 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
     inputReactionTimesRef.current = []
   }, [])
 
+  const setDifficultyMode = useCallback(
+    (mode: DualTaskDifficulty) => {
+      if (statusRef.current === 'playing') return
+
+      const nextConfig = getDualTaskConfig(mode)
+
+      difficultyModeRef.current = mode
+      selectedConfigRef.current = nextConfig
+      setDifficultyModeState(mode)
+
+      resetInternalState()
+      setLiveStats(createInitialLiveStats(nextConfig))
+      setLatestResult(null)
+    },
+    [resetInternalState],
+  )
+
   const buildLiveStats = useCallback((now: number): DualTaskLiveStats => {
+    const config = selectedConfigRef.current
+
     const elapsedMs = now - startedAtRef.current
-    const timeLeftMs = Math.max(0, DUAL_TASK_CONFIG.durationMs - elapsedMs)
+    const timeLeftMs = Math.max(0, config.durationMs - elapsedMs)
 
     const trackingAccuracy = calculatePercentage(
       onTargetSamplesRef.current,
@@ -156,10 +231,17 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
     const now = performance.now()
     const stats = buildLiveStats(now)
 
+    const config = selectedConfigRef.current
+    const currentDifficultyMode = difficultyModeRef.current
+
     const result: DualTaskResult = {
       gameType: 'dual_task',
       sessionSeed: sessionSeedRef.current,
-      durationMs: DUAL_TASK_CONFIG.durationMs,
+      durationMs: config.durationMs,
+
+      difficultyMode: currentDifficultyMode,
+      movementScheduleVersion: config.movementScheduleVersion,
+      configSnapshot: createConfigSnapshot(config),
 
       trackingAccuracy: Number(stats.trackingAccuracy.toFixed(2)),
       averageDistance: Number(stats.averageDistance.toFixed(2)),
@@ -191,7 +273,6 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
     const sequence = activeSequenceRef.current
 
     if (!sequence) return
-
     if (now <= sequence.expiresAt) return
 
     const remainingKeys = sequence.keys.length - sequence.currentIndex
@@ -206,6 +287,8 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
   }, [])
 
   const spawnSequenceIfNeeded = useCallback((now: number) => {
+    const config = selectedConfigRef.current
+
     if (activeSequenceRef.current) return
     if (now < nextSequenceAtRef.current) return
 
@@ -213,6 +296,7 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
       now,
       rngRef.current,
       sequenceCountRef.current,
+      config,
     )
 
     sequenceCountRef.current += 1
@@ -220,13 +304,14 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
     activeSequenceRef.current = sequence
     setActiveSequence(sequence)
 
-    nextSequenceAtRef.current =
-      now + DUAL_TASK_CONFIG.sequenceSpawnDelayMs
+    nextSequenceAtRef.current = now + config.sequenceSpawnDelayMs
   }, [])
 
   const gameLoop = useCallback(
     (now: number) => {
       if (statusRef.current !== 'playing') return
+
+      const config = selectedConfigRef.current
 
       const deltaSec =
         lastFrameAtRef.current > 0
@@ -241,6 +326,7 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
         target: targetRef.current,
         deltaSec,
         elapsedSec,
+        config,
       })
 
       const dx = pointerRef.current.x - targetRef.current.x
@@ -297,7 +383,7 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
     statusRef.current = 'playing'
     setStatus('playing')
     setLatestResult(null)
-    setLiveStats(initialLiveStats)
+    setLiveStats(createInitialLiveStats(selectedConfigRef.current))
 
     animationFrameRef.current = requestAnimationFrame(gameLoop)
   }, [gameLoop, resetInternalState])
@@ -312,12 +398,17 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
 
     statusRef.current = 'idle'
     setStatus('idle')
-    setLiveStats(initialLiveStats)
+    setLiveStats(createInitialLiveStats(selectedConfigRef.current))
     setLatestResult(null)
   }, [resetInternalState])
 
   const updatePointer = useCallback((point: Point) => {
-    pointerRef.current = point
+    const config = selectedConfigRef.current
+
+    pointerRef.current = {
+      x: Math.min(config.canvasWidth, Math.max(0, point.x)),
+      y: Math.min(config.canvasHeight, Math.max(0, point.y)),
+    }
   }, [])
 
   const handleKeyInput = useCallback(
@@ -374,29 +465,31 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-        if (event.repeat) return
+      if (event.repeat) return
 
-        const keyFromCode = getGameKeyFromKeyboardEvent(event)
+      const keyFromCode = getGameKeyFromKeyboardEvent(event)
 
-        if (!keyFromCode) return
+      if (!keyFromCode) return
 
-        event.preventDefault()
-        handleKeyInput(keyFromCode)
+      event.preventDefault()
+      handleKeyInput(keyFromCode)
     }
 
     window.addEventListener('keydown', onKeyDown)
 
     return () => {
-        window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keydown', onKeyDown)
 
-        if (animationFrameRef.current !== null) {
+      if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current)
-        }
+      }
     }
-    }, [handleKeyInput])
+  }, [handleKeyInput])
 
   return {
     status,
+    difficultyMode,
+    selectedConfig: selectedConfigRef.current,
     liveStats,
     latestResult,
     activeSequence,
@@ -404,6 +497,7 @@ export function useDualTaskGame({ onFinish }: UseDualTaskGameOptions = {}) {
     targetRef,
     pointerRef,
 
+    setDifficultyMode,
     startGame,
     resetGame,
     finishGame,
