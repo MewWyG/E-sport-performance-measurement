@@ -20,6 +20,9 @@ export type Target = {
   maxSpeed: number
   phaseX: number
   phaseY: number
+
+  waypointX: number
+  waypointY: number
 }
 
 export type KeySequence = {

@@ -326,6 +326,7 @@ export function useDualTaskGame({
         target: targetRef.current,
         deltaSec,
         elapsedSec,
+        rng: rngRef.current,
         config,
       })
 
