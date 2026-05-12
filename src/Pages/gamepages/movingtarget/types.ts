@@ -61,6 +61,10 @@ export type TargetDistancePlan = {
 export type MovingTarget = {
   id: string
 
+  targetIndex: number
+  targetNumber: number
+  stageTargetIndex: number
+
   x: number
   y: number
 
@@ -103,6 +107,52 @@ export type MovingTarget = {
   mode: GameMode
 }
 
+export type MovingTargetOutcome = 'hit' | 'miss'
+
+export type MovingTargetMissReason =
+  | 'movement_completed'
+  | 'safety_timeout'
+  | 'empty_area_click'
+
+export type MovingTargetEvent = {
+  targetIndex: number
+  targetNumber: number
+  stageIndex: number
+  stageTargetIndex: number
+  mode: GameMode
+
+  outcome: MovingTargetOutcome
+  missReason?: MovingTargetMissReason
+
+  responseTimeMs: number | null
+
+  movementStepDistance: number
+  remainingMoveDistance: number
+
+  plannedSpawnDistance: number
+  actualSpawnDistance: number
+
+  spawnX: number
+  spawnY: number
+  finalX: number
+  finalY: number
+
+  targetSize: number
+  targetLifetime: number
+
+  createdAtMs: number
+  completedAtMs: number
+}
+
+export type MovingTargetInputEvent = {
+  eventType: 'wrong_target_click' | 'empty_area_click'
+  gameTimeMs: number
+  targetNumber: number | null
+  targetId?: string
+  x?: number
+  y?: number
+}
+
 export type MovingTargetStats = {
   hits: number
   misses: number
@@ -112,4 +162,7 @@ export type MovingTargetStats = {
   accuracy: number
   averageResponseTime: number
   mode: GameMode
+
+  targetEvents: MovingTargetEvent[]
+  inputEvents: MovingTargetInputEvent[]
 }

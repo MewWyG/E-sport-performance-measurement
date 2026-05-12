@@ -12,6 +12,11 @@ export function buildNumberSearchResultPayload({
   sessionId = null,
   playerId = null,
 }: BuildNumberSearchResultPayloadParams): GameResultPayload {
+  const clickAccuracy = calculateClickAccuracy(
+    stats.correctClicks,
+    stats.wrongClicks,
+  )
+
   return {
     session_id: sessionId,
     player_id: playerId,
@@ -19,22 +24,39 @@ export function buildNumberSearchResultPayload({
 
     score: stats.score,
 
-    // Number Search เวอร์ชันนี้ไม่ใช้ accuracy เป็น metric หลัก
-    // ใส่ 0 ไว้เพื่อให้ตรงกับ GameResultPayload เดิม
-    accuracy: 0,
-
+    accuracy: clickAccuracy,
     reaction_time_ms: stats.averageFindTime,
     duration_ms: Math.round(stats.elapsedMs),
 
     raw_data_json: {
-      levelReached: stats.levelReached,
-      completedLevels: stats.completedLevels,
-      correctClicks: stats.correctClicks,
-      wrongClicks: stats.wrongClicks,
-      totalNumbersShown: stats.totalNumbersShown,
-      averageFindTime: stats.averageFindTime,
-      score: stats.score,
-      durationMs: Math.round(stats.elapsedMs),
+      schemaVersion: 1,
+
+      gameMode: 'standard',
+
+      summary: {
+        levelReached: stats.levelReached,
+        completedLevels: stats.completedLevels,
+        correctClicks: stats.correctClicks,
+        wrongClicks: stats.wrongClicks,
+        totalNumbersShown: stats.totalNumbersShown,
+        clickAccuracy,
+        averageFindTime: stats.averageFindTime,
+        score: stats.score,
+        durationMs: Math.round(stats.elapsedMs),
+      },
+
+      targetEvents: stats.targetEvents,
+      inputEvents: stats.inputEvents,
     },
   }
+}
+
+function calculateClickAccuracy(correctClicks: number, wrongClicks: number) {
+  const totalClicks = correctClicks + wrongClicks
+
+  if (totalClicks <= 0) {
+    return 0
+  }
+
+  return Math.round((correctClicks / totalClicks) * 100)
 }

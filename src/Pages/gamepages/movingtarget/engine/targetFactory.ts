@@ -113,11 +113,14 @@ function createTarget({
   const speed = baseSpeed * speedMultiplier
 
   const movementDuration = distancePlan.movementStepDistance / speed
-
   const safetyLifetime = Math.ceil(movementDuration * 2 + 1000)
 
   return {
     id,
+
+    targetIndex: distancePlan.targetIndex,
+    targetNumber: distancePlan.targetNumber,
+    stageTargetIndex: distancePlan.stageTargetIndex,
 
     x: position.x,
     y: position.y,

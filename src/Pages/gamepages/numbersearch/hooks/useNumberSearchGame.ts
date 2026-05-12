@@ -9,7 +9,9 @@ import {
 } from '../engine/scoring'
 import type {
   GameState,
+  NumberSearchInputEvent,
   NumberSearchStats,
+  NumberSearchTargetEvent,
   NumberTileData,
 } from '../types'
 
@@ -23,11 +25,17 @@ export function useNumberSearchGame() {
   const wrongClicksRef = useRef(0)
   const totalNumbersShownRef = useRef(0)
   const totalFindTimeRef = useRef(0)
+
   const startTimeRef = useRef<number | null>(null)
   const targetStartedAtRef = useRef<number | null>(null)
+
   const answerSequenceRef = useRef<number[]>([])
   const clickedNumbersRef = useRef<number[]>([])
   const currentIndexRef = useRef(0)
+
+  const tilesRef = useRef<NumberTileData[]>([])
+  const targetEventsRef = useRef<NumberSearchTargetEvent[]>([])
+  const inputEventsRef = useRef<NumberSearchInputEvent[]>([])
 
   const [gameState, setGameState] = useState<GameState>('ready')
   const [level, setLevel] = useState(1)
@@ -40,6 +48,11 @@ export function useNumberSearchGame() {
   const [elapsedMs, setElapsedMs] = useState(0)
   const [averageFindTime, setAverageFindTime] = useState(0)
   const [score, setScore] = useState(0)
+
+  const [targetEvents, setTargetEvents] = useState<
+    NumberSearchTargetEvent[]
+  >([])
+  const [inputEvents, setInputEvents] = useState<NumberSearchInputEvent[]>([])
 
   useEffect(() => {
     gameStateRef.current = gameState
@@ -65,6 +78,16 @@ export function useNumberSearchGame() {
     }
   }, [gameState])
 
+  function getGameTime(now = performance.now()) {
+    return startTimeRef.current === null
+      ? 0
+      : Math.round(now - startTimeRef.current)
+  }
+
+  function getTileByValue(value: number) {
+    return tilesRef.current.find((tile) => tile.value === value)
+  }
+
   function resetGame() {
     gameStateRef.current = 'ready'
     levelRef.current = 1
@@ -73,11 +96,17 @@ export function useNumberSearchGame() {
     wrongClicksRef.current = 0
     totalNumbersShownRef.current = 0
     totalFindTimeRef.current = 0
+
     startTimeRef.current = null
     targetStartedAtRef.current = null
+
     answerSequenceRef.current = []
     clickedNumbersRef.current = []
     currentIndexRef.current = 0
+
+    tilesRef.current = []
+    targetEventsRef.current = []
+    inputEventsRef.current = []
 
     setLevel(1)
     setCompletedLevels(0)
@@ -89,6 +118,8 @@ export function useNumberSearchGame() {
     setElapsedMs(0)
     setAverageFindTime(0)
     setScore(0)
+    setTargetEvents([])
+    setInputEvents([])
   }
 
   function startGame() {
@@ -133,11 +164,90 @@ export function useNumberSearchGame() {
     currentIndexRef.current = 0
     targetStartedAtRef.current = now
     totalNumbersShownRef.current += answerSequence.length
+    tilesRef.current = nextTiles
 
     setLevel(nextLevel)
     setTiles(nextTiles)
     setClickedNumbers([])
     setTotalNumbersShown(totalNumbersShownRef.current)
+  }
+
+  function recordTargetEvent({
+    clickedValue,
+    responseTime,
+    now,
+    clickedNumbersBefore,
+    clickedNumbersAfter,
+    remainingNumbers,
+  }: {
+    clickedValue: number
+    responseTime: number
+    now: number
+    clickedNumbersBefore: number[]
+    clickedNumbersAfter: number[]
+    remainingNumbers: number[]
+  }) {
+    const tile = getTileByValue(clickedValue)
+    const targetStartedAt = targetStartedAtRef.current ?? now
+
+    const event: NumberSearchTargetEvent = {
+      level: levelRef.current,
+      levelTargetCount: answerSequenceRef.current.length,
+      targetOrder: currentIndexRef.current + 1,
+
+      expectedValue: clickedValue,
+      clickedValue,
+      outcome: 'correct',
+
+      responseTimeMs: Math.round(responseTime),
+
+      clickedNumbersBefore,
+      clickedNumbersAfter,
+      remainingNumbers,
+
+      xPercent: Number((tile?.xPercent ?? 0).toFixed(2)),
+      yPercent: Number((tile?.yPercent ?? 0).toFixed(2)),
+
+      targetStartedAtMs: getGameTime(targetStartedAt),
+      completedAtMs: getGameTime(now),
+    }
+
+    targetEventsRef.current = [...targetEventsRef.current, event]
+    setTargetEvents(targetEventsRef.current)
+  }
+
+  function recordWrongInputEvent({
+    clickedValue,
+    expectedValue,
+    now,
+    wrongClickCount,
+  }: {
+    clickedValue: number
+    expectedValue: number
+    now: number
+    wrongClickCount: number
+  }) {
+    const tile = getTileByValue(clickedValue)
+
+    const event: NumberSearchInputEvent = {
+      eventType: 'wrong_number_click',
+
+      level: levelRef.current,
+      targetOrder: currentIndexRef.current + 1,
+
+      expectedValue,
+      clickedValue,
+
+      wrongClickCount,
+
+      xPercent: Number((tile?.xPercent ?? 0).toFixed(2)),
+      yPercent: Number((tile?.yPercent ?? 0).toFixed(2)),
+
+      gameTimeMs: getGameTime(now),
+    }
+
+    inputEventsRef.current = [...inputEventsRef.current, event]
+    setInputEvents(inputEventsRef.current)
   }
 
   function handleTileClick(value: number) {
@@ -153,6 +263,14 @@ export function useNumberSearchGame() {
 
       wrongClicksRef.current = nextWrongClicks
       setWrongClicks(nextWrongClicks)
+
+      recordWrongInputEvent({
+        clickedValue: value,
+        expectedValue,
+        now,
+        wrongClickCount: nextWrongClicks,
+      })
+
       updateScore()
 
       if (nextWrongClicks >= WRONG_CLICK_LIMIT) {
@@ -164,12 +282,28 @@ export function useNumberSearchGame() {
 
     const targetStartedAt = targetStartedAtRef.current ?? now
     const responseTime = now - targetStartedAt
-    const nextCorrectClicks = correctClicksRef.current + 1
+
+    const clickedNumbersBefore = [...clickedNumbersRef.current]
     const nextClickedNumbers = [...clickedNumbersRef.current, value]
+
+    const nextIndex = currentIndexRef.current + 1
+    const answerSequence = answerSequenceRef.current
+    const remainingNumbers = answerSequence.slice(nextIndex)
+
+    const nextCorrectClicks = correctClicksRef.current + 1
 
     correctClicksRef.current = nextCorrectClicks
     clickedNumbersRef.current = nextClickedNumbers
     totalFindTimeRef.current += responseTime
+
+    recordTargetEvent({
+      clickedValue: value,
+      responseTime,
+      now,
+      clickedNumbersBefore,
+      clickedNumbersAfter: nextClickedNumbers,
+      remainingNumbers,
+    })
 
     setCorrectClicks(nextCorrectClicks)
     setClickedNumbers(nextClickedNumbers)
@@ -180,14 +314,12 @@ export function useNumberSearchGame() {
       ),
     )
 
-    setTiles((currentTiles) =>
-      currentTiles.map((tile) =>
-        tile.value === value ? { ...tile, isCleared: true } : tile,
-      ),
+    const nextTiles = tilesRef.current.map((tile) =>
+      tile.value === value ? { ...tile, isCleared: true } : tile,
     )
 
-    const nextIndex = currentIndexRef.current + 1
-    const answerSequence = answerSequenceRef.current
+    tilesRef.current = nextTiles
+    setTiles(nextTiles)
 
     if (nextIndex >= answerSequence.length) {
       const nextCompletedLevels = completedLevelsRef.current + 1
@@ -226,6 +358,8 @@ export function useNumberSearchGame() {
     elapsedMs,
     averageFindTime,
     score,
+    targetEvents,
+    inputEvents,
   }
 
   return {
@@ -239,6 +373,10 @@ export function useNumberSearchGame() {
     averageFindTime,
     score,
     stats,
+
+    targetEvents,
+    inputEvents,
+
     startGame,
     stopGame,
     handleTileClick,
