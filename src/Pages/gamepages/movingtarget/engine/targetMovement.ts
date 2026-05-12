@@ -17,18 +17,33 @@ export function updateTargets(
   const stopButtonSafeRect = getStopButtonSafeRect(bounds)
 
   const movedTargets = targets.map((target) =>
-    moveTargetByStepDistance(target, deltaMs, bounds, stopButtonSafeRect),
+    moveTargetUntilDistanceComplete(
+      target,
+      deltaMs,
+      bounds,
+      stopButtonSafeRect,
+    ),
   )
 
   return separateOverlappingTargets(movedTargets, bounds)
 }
 
-function moveTargetByStepDistance(
+function moveTargetUntilDistanceComplete(
   target: MovingTarget,
   deltaMs: number,
   bounds: Bounds,
   stopButtonSafeRect: ReturnType<typeof getStopButtonSafeRect>,
 ): MovingTarget {
+  if (target.hasCompletedMovement || target.remainingMoveDistance <= 0.001) {
+    return {
+      ...target,
+      vx: 0,
+      vy: 0,
+      remainingMoveDistance: 0,
+      hasCompletedMovement: true,
+    }
+  }
+
   const speed = Math.max(Math.hypot(target.vx, target.vy), MIN_DIRECTION_SPEED)
 
   let directionX = target.vx / speed
@@ -48,11 +63,8 @@ function moveTargetByStepDistance(
     guard += 1
 
     if (remainingMoveDistance <= 0.001) {
-      const nextDirection = getRandomDirection()
-
-      directionX = nextDirection.x
-      directionY = nextDirection.y
-      remainingMoveDistance = target.movementStepDistance
+      remainingMoveDistance = 0
+      break
     }
 
     const stepDistance = Math.min(
@@ -102,6 +114,18 @@ function moveTargetByStepDistance(
     remainingMoveDistance -= stepDistance
   }
 
+  if (remainingMoveDistance <= 0.001) {
+    return {
+      ...target,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      remainingMoveDistance: 0,
+      hasCompletedMovement: true,
+    }
+  }
+
   return {
     ...target,
     x,
@@ -109,6 +133,7 @@ function moveTargetByStepDistance(
     vx: directionX * speed,
     vy: directionY * speed,
     remainingMoveDistance,
+    hasCompletedMovement: false,
   }
 }
 
@@ -159,15 +184,6 @@ function resolveBoundaryCollision({
     y,
     directionX: directionX / directionLength,
     directionY: directionY / directionLength,
-  }
-}
-
-function getRandomDirection() {
-  const angle = Math.random() * Math.PI * 2
-
-  return {
-    x: Math.cos(angle),
-    y: Math.sin(angle),
   }
 }
 

@@ -70,7 +70,7 @@ export function createTargets({
         difficulty: {
           ...difficulty,
           size: decoySize,
-          speed: difficulty.speed * 0.85,
+          moveDurationMs: difficulty.moveDurationMs * 1.1,
         },
         now,
         distancePlan,
@@ -105,8 +105,16 @@ function createTarget({
   actualSpawnDistance,
 }: CreateTargetParams): MovingTarget {
   const angle = Math.random() * Math.PI * 2
-  const speedMultiplier = isCorrect ? 1 : 0.8
-  const speed = difficulty.speed * speedMultiplier
+
+  const baseSpeed =
+    distancePlan.movementStepDistance / Math.max(difficulty.moveDurationMs, 1)
+
+  const speedMultiplier = isCorrect ? 1 : 0.85
+  const speed = baseSpeed * speedMultiplier
+
+  const movementDuration = distancePlan.movementStepDistance / speed
+
+  const safetyLifetime = Math.ceil(movementDuration * 2 + 1000)
 
   return {
     id,
@@ -120,16 +128,17 @@ function createTarget({
     size: Math.max(difficulty.size, 28),
 
     bornAt: now,
-    lifetime: difficulty.lifetime,
+    lifetime: Math.max(difficulty.lifetime, safetyLifetime),
 
     isCorrect,
     pattern: difficulty.pattern,
 
-    anchorX: position.x,
-    anchorY: position.y,
+    spawnX: position.x,
+    spawnY: position.y,
 
     movementStepDistance: distancePlan.movementStepDistance,
     remainingMoveDistance: distancePlan.movementStepDistance,
+    hasCompletedMovement: false,
 
     plannedSpawnDistance,
     actualSpawnDistance,

@@ -16,8 +16,24 @@ export type Point = {
 
 export type Difficulty = {
   size: number
+
+  /**
+   * เก็บไว้เป็น fallback / compatibility
+   * ความเร็วจริงของแต่ละเป้าจะคำนวณจาก movementStepDistance / moveDurationMs
+   */
   speed: number
+
+  /**
+   * ระยะเวลาที่เป้าควรใช้ในการเคลื่อนที่ครบ movementStepDistance
+   * ยิ่งค่าน้อย เป้ายิ่งเร็ว
+   */
+  moveDurationMs: number
+
+  /**
+   * ใช้เป็น safety timeout เฉย ๆ กันกรณี movement logic มีปัญหา
+   */
   lifetime: number
+
   decoyCount: number
   pattern: MovementPattern
   label: string
@@ -31,8 +47,8 @@ export type TargetDistancePlan = {
   stageTargetIndex: number
 
   /**
-   * ระยะรวมที่เป้าต้องเคลื่อนที่ให้ครบในหนึ่ง movement cycle
-   * ถ้าชนขอบก่อนครบระยะ จะเด้งแล้วเดินต่อจนครบ
+   * ระยะรวมที่เป้านี้เคลื่อนที่ได้ทั้งหมด
+   * เมื่อครบระยะนี้ เป้าจะหายทันที
    */
   movementStepDistance: number
 
@@ -60,21 +76,25 @@ export type MovingTarget = {
   pattern: MovementPattern
 
   /**
-   * จุดเกิดของเป้า ใช้เป็น reference/debug
-   * ไม่ได้ใช้เป็นกรอบวงกลมแล้ว
+   * จุดเกิดของเป้า ใช้เป็นฐานคำนวณตำแหน่งเกิดของเป้าถัดไป
    */
-  anchorX: number
-  anchorY: number
+  spawnX: number
+  spawnY: number
 
   /**
-   * ระยะที่เป้าต้องเคลื่อนที่ให้ครบก่อนสุ่มทิศใหม่
+   * ระยะรวมที่เป้านี้ต้องเคลื่อนที่ให้ครบ
    */
   movementStepDistance: number
 
   /**
-   * ระยะที่เหลือใน movement cycle ปัจจุบัน
+   * ระยะที่เหลือก่อนเป้านี้จะหาย
    */
   remainingMoveDistance: number
+
+  /**
+   * true เมื่อเป้าเคลื่อนที่ครบ movementStepDistance แล้ว
+   */
+  hasCompletedMovement: boolean
 
   plannedSpawnDistance: number
   actualSpawnDistance: number
