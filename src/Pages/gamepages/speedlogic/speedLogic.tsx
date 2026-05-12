@@ -3,6 +3,10 @@ import { Link, useNavigate } from 'react-router'
 import { SpeedLogicIcon } from '../../../components/icons/AppIcons'
 import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
+import {
+  SPEED_LOGIC_TEST_PRESETS,
+  type SpeedLogicTestMode,
+} from './constants'
 import { MetricCard } from './components/MetricCard'
 import { QuestionCard } from './components/QuestionCard'
 import { useSpeedLogicGame } from './hooks/useSpeedLogicGame'
@@ -14,8 +18,11 @@ export default function SpeedLogicGamePage() {
 
   const {
     status,
+    testMode,
+    selectedConfig,
     currentQuestion,
     liveStats,
+    setTestMode,
     startGame,
     resetGame,
     answerQuestion,
@@ -75,6 +82,7 @@ export default function SpeedLogicGamePage() {
   }
 
   const timeLeftSec = Math.ceil(liveStats.timeLeftMs / 1000)
+  const isPlayingOrCountingDown = status === 'playing' || countdown !== null
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-sp-bg font-sans text-sp-text">
@@ -110,6 +118,9 @@ export default function SpeedLogicGamePage() {
             </div>
 
             <div>
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-sp-secondary">
+                Processing Speed Test
+              </p>
 
               <h1 className="mt-2 text-4xl font-black text-sp-text md:text-5xl">
                 Speed Logic
@@ -121,11 +132,23 @@ export default function SpeedLogicGamePage() {
             </div>
           </div>
 
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <TestModeSelector
+            value={testMode}
+            disabled={isPlayingOrCountingDown}
+            onChange={setTestMode}
+          />
+
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-5">
             <MetricCard
               label="Time Left"
               value={`${timeLeftSec}s`}
               helper="เวลาที่เหลือ"
+            />
+
+            <MetricCard
+              label="Mode"
+              value={selectedConfig.label.toUpperCase()}
+              helper={selectedConfig.scheduleVersion}
             />
 
             <MetricCard
@@ -160,6 +183,165 @@ export default function SpeedLogicGamePage() {
       </main>
 
       <SiteFooter />
+    </div>
+  )
+}
+
+type TestModeSelectorProps = {
+  value: SpeedLogicTestMode
+  disabled: boolean
+  onChange: (mode: SpeedLogicTestMode) => void
+}
+
+function TestModeSelector({
+  value,
+  disabled,
+  onChange,
+}: TestModeSelectorProps) {
+  const modeEntries = Object.entries(SPEED_LOGIC_TEST_PRESETS) as Array<
+    [SpeedLogicTestMode, (typeof SPEED_LOGIC_TEST_PRESETS)[SpeedLogicTestMode]]
+  >
+
+  return (
+    <section className="mb-6 rounded-sp-card border border-sp-border bg-sp-glass p-5 backdrop-blur-xl">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.22em] text-sp-secondary">
+            Test Mode
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black text-sp-text">
+            เลือกระดับการทดสอบก่อนเริ่มเกม
+          </h2>
+
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-sp-text-muted">
+            แต่ละโหมดใช้ question schedule ต่างกัน โดยระบบจะควบคุมประเภทโจทย์ตามช่วงเวลา
+            และกระจายประเภทโจทย์ให้สมดุล เพื่อให้การทดสอบมีความเสมอภาคมากขึ้น
+          </p>
+        </div>
+
+        {disabled ? (
+          <p className="rounded-sp-pill border border-sp-border bg-sp-surface/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-sp-text-subtle">
+            Locked While Playing
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {modeEntries.map(([mode, config]) => (
+          <TestModeButton
+            key={mode}
+            mode={mode}
+            label={config.label}
+            isActive={value === mode}
+            disabled={disabled}
+            initialDifficulty={config.initialDifficulty}
+            maxDifficulty={config.maxDifficulty}
+            streakToIncreaseDifficulty={config.streakToIncreaseDifficulty}
+            mistakesToDecreaseDifficulty={config.mistakesToDecreaseDifficulty}
+            scheduleVersion={config.scheduleVersion}
+            stageCount={config.questionStages.length}
+            onClick={() => onChange(mode)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+type TestModeButtonProps = {
+  mode: SpeedLogicTestMode
+  label: string
+  isActive: boolean
+  disabled: boolean
+  initialDifficulty: number
+  maxDifficulty: number
+  streakToIncreaseDifficulty: number
+  mistakesToDecreaseDifficulty: number
+  scheduleVersion: string
+  stageCount: number
+  onClick: () => void
+}
+
+function TestModeButton({
+  mode,
+  label,
+  isActive,
+  disabled,
+  initialDifficulty,
+  maxDifficulty,
+  streakToIncreaseDifficulty,
+  mistakesToDecreaseDifficulty,
+  scheduleVersion,
+  stageCount,
+  onClick,
+}: TestModeButtonProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        'rounded-sp-xl border p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60',
+        isActive
+          ? 'border-sp-warning bg-sp-warning-soft shadow-sp-brand'
+          : 'border-sp-border bg-sp-surface/55 hover:-translate-y-0.5 hover:bg-sp-surface-strong',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-sp-text-subtle">
+            {mode}
+          </p>
+
+          <h3 className="mt-1 text-xl font-black text-sp-text">
+            {label}
+          </h3>
+        </div>
+
+        <span
+          className={[
+            'rounded-sp-pill px-3 py-1 text-xs font-black uppercase tracking-[0.14em]',
+            isActive
+              ? 'bg-sp-warning text-sp-bg'
+              : 'bg-sp-bg/70 text-sp-text-muted',
+          ].join(' ')}
+        >
+          {isActive ? 'Selected' : 'Choose'}
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <ModeStat label="Initial" value={`${initialDifficulty}`} />
+        <ModeStat label="Max" value={`${maxDifficulty}`} />
+        <ModeStat label="Streak" value={`${streakToIncreaseDifficulty}`} />
+        <ModeStat label="Mistakes" value={`${mistakesToDecreaseDifficulty}`} />
+        <ModeStat label="Stages" value={`${stageCount}`} />
+        <ModeStat label="Duration" value="60s" />
+      </div>
+
+      <p className="mt-4 break-words text-xs font-semibold uppercase tracking-[0.14em] text-sp-text-subtle">
+        {scheduleVersion}
+      </p>
+    </button>
+  )
+}
+
+type ModeStatProps = {
+  label: string
+  value: string
+}
+
+function ModeStat({ label, value }: ModeStatProps) {
+  return (
+    <div className="rounded-sp-lg border border-sp-border bg-sp-bg/45 px-3 py-2">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sp-text-subtle">
+        {label}
+      </p>
+
+      <p className="mt-1 font-black text-sp-text">
+        {value}
+      </p>
     </div>
   )
 }
