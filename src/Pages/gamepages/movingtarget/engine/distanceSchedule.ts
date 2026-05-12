@@ -31,8 +31,11 @@ export function createDistanceSchedule(mode: GameMode): DistanceSchedule {
       multiplier: modeConfig.distanceMultiplier,
     })
 
-    const movementStepQueue = createMiniBatchShuffleBag(movementStepValues)
-    const spawnDistanceQueue = createMiniBatchShuffleBag(spawnDistanceValues)
+    const movementStepQueue =
+      createInterleavedMiniBatchShuffleBag(movementStepValues)
+
+    const spawnDistanceQueue =
+      createInterleavedMiniBatchShuffleBag(spawnDistanceValues)
 
     for (
       let stageTargetIndex = 0;
@@ -91,13 +94,40 @@ function createStageDistanceValues({
   })
 }
 
-function createMiniBatchShuffleBag(values: number[]) {
+/**
+ * แบ่งค่าใน stage เป็น 2 กลุ่ม:
+ * - lower batch = ค่าครึ่งแรก
+ * - upper batch = ค่าครึ่งหลัง
+ *
+ * จากนั้น shuffle แต่ละกลุ่ม แล้วนำมาสลับกันแบบ:
+ * lower, upper, lower, upper, ...
+ *
+ * ตัวอย่าง:
+ * lower = [35, 20, 40, 25, 30]
+ * upper = [55, 45, 65, 50, 60]
+ *
+ * result = [35, 55, 20, 45, 40, 65, 25, 50, 30, 60]
+ */
+function createInterleavedMiniBatchShuffleBag(values: number[]) {
   const middleIndex = Math.ceil(values.length / 2)
 
-  const firstBatch = values.slice(0, middleIndex)
-  const secondBatch = values.slice(middleIndex)
+  const lowerBatch = shuffleArray(values.slice(0, middleIndex))
+  const upperBatch = shuffleArray(values.slice(middleIndex))
 
-  return [...shuffleArray(firstBatch), ...shuffleArray(secondBatch)]
+  const result: number[] = []
+  const maxLength = Math.max(lowerBatch.length, upperBatch.length)
+
+  for (let index = 0; index < maxLength; index += 1) {
+    if (lowerBatch[index] !== undefined) {
+      result.push(lowerBatch[index])
+    }
+
+    if (upperBatch[index] !== undefined) {
+      result.push(upperBatch[index])
+    }
+  }
+
+  return result
 }
 
 function shuffleArray<T>(items: T[]) {

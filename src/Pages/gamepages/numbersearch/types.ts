@@ -14,6 +14,45 @@ export type LevelConfig = {
   playCount: number
 }
 
+export type NumberSearchTargetEvent = {
+  level: number
+  levelTargetCount: number
+  targetOrder: number
+
+  expectedValue: number
+  clickedValue: number
+  outcome: 'correct'
+
+  responseTimeMs: number
+
+  clickedNumbersBefore: number[]
+  clickedNumbersAfter: number[]
+  remainingNumbers: number[]
+
+  xPercent: number
+  yPercent: number
+
+  targetStartedAtMs: number
+  completedAtMs: number
+}
+
+export type NumberSearchInputEvent = {
+  eventType: 'wrong_number_click'
+
+  level: number
+  targetOrder: number
+
+  expectedValue: number
+  clickedValue: number
+
+  wrongClickCount: number
+
+  xPercent: number
+  yPercent: number
+
+  gameTimeMs: number
+}
+
 export type NumberSearchStats = {
   levelReached: number
   completedLevels: number
@@ -23,4 +62,7 @@ export type NumberSearchStats = {
   elapsedMs: number
   averageFindTime: number
   score: number
+
+  targetEvents: NumberSearchTargetEvent[]
+  inputEvents: NumberSearchInputEvent[]
 }

@@ -25,6 +25,8 @@ function MovingTargetGamePage() {
     elapsedMs,
     accuracy,
     averageResponseTime,
+    targetEvents,
+    inputEvents,
     startGame,
     stopGame,
     setSelectedMode,
@@ -42,6 +44,8 @@ function MovingTargetGamePage() {
       accuracy,
       averageResponseTime,
       mode: selectedMode,
+      targetEvents,
+      inputEvents,
     }),
     [
       hits,
@@ -52,6 +56,8 @@ function MovingTargetGamePage() {
       accuracy,
       averageResponseTime,
       selectedMode,
+      targetEvents,
+      inputEvents,
     ],
   )
 

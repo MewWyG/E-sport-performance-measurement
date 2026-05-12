@@ -18,6 +18,7 @@ export function buildMovingTargetResultPayload({
     player_id: playerId,
     game_id: 'moving-target',
 
+    // ตอนนี้ใช้ accuracy เป็น score หลักของ Moving Target
     score: stats.accuracy,
 
     accuracy: stats.accuracy,
@@ -25,15 +26,23 @@ export function buildMovingTargetResultPayload({
     duration_ms: Math.round(stats.elapsedMs),
 
     raw_data_json: {
+      schemaVersion: 1,
+
       gameMode: stats.mode,
       totalTargets: TOTAL_TARGETS,
       spawnedTargetCount: stats.spawnedTargetCount,
-      hits: stats.hits,
-      misses: stats.misses,
-      wrongClicks: stats.wrongClicks,
-      accuracy: stats.accuracy,
-      averageResponseTime: stats.averageResponseTime,
-      durationMs: Math.round(stats.elapsedMs),
+
+      summary: {
+        hits: stats.hits,
+        misses: stats.misses,
+        wrongClicks: stats.wrongClicks,
+        accuracy: stats.accuracy,
+        averageResponseTime: stats.averageResponseTime,
+        durationMs: Math.round(stats.elapsedMs),
+      },
+
+      targetEvents: stats.targetEvents,
+      inputEvents: stats.inputEvents,
     },
   }
 }

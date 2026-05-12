@@ -41,6 +41,8 @@ function NumberSearchGamePage() {
       stats.elapsedMs,
       stats.averageFindTime,
       stats.score,
+      stats.targetEvents,
+      stats.inputEvents,
     ],
   )
 

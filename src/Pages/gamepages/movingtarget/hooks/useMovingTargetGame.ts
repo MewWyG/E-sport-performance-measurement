@@ -24,6 +24,10 @@ import type {
   GameMode,
   GameState,
   MovingTarget,
+  MovingTargetEvent,
+  MovingTargetInputEvent,
+  MovingTargetMissReason,
+  MovingTargetOutcome,
   Point,
 } from '../types'
 
@@ -51,13 +55,13 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const spawnIndexRef = useRef(0)
 
   /**
-   * เก็บ “จุดเกิด” ของเป้าจริงตัวก่อนหน้า
+   * เก็บจุดเกิดของเป้าจริงตัวก่อนหน้า
    * ใช้เป็นฐานคำนวณตำแหน่งเกิดของเป้าถัดไป
-   *
-   * สำคัญ:
-   * ไม่ใช้ตำแหน่งล่าสุดของเป้า เพราะผู้เล่นแต่ละคนคลิกเร็ว/ช้าไม่เท่ากัน
    */
   const previousTargetPointRef = useRef<Point | null>(null)
+
+  const targetEventsRef = useRef<MovingTargetEvent[]>([])
+  const inputEventsRef = useRef<MovingTargetInputEvent[]>([])
 
   const [gameState, setGameState] = useState<GameState>('ready')
   const [selectedMode, setSelectedModeState] = useState<GameMode>('normal')
@@ -68,6 +72,9 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const [wrongClicks, setWrongClicks] = useState(0)
   const [spawnedTargetCount, setSpawnedTargetCount] = useState(0)
   const [elapsedMs, setElapsedMs] = useState(0)
+
+  const [targetEvents, setTargetEvents] = useState<MovingTargetEvent[]>([])
+  const [inputEvents, setInputEvents] = useState<MovingTargetInputEvent[]>([])
 
   const accuracy = calculateAccuracy(hits, misses, wrongClicks)
 
@@ -112,21 +119,26 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
 
       const correctTarget = updatedTargets.find((target) => target.isCorrect)
 
-      /**
-       * เป้าจะถือว่าหมดอายุเมื่อ:
-       * 1. เคลื่อนที่ครบ movementStepDistance แล้ว
-       * 2. หรือเกิน lifetime ที่เป็น safety timeout
-       *
-       * ตอนนี้ gameplay หลักใช้ hasCompletedMovement เป็นตัวจบเป้า
-       * ส่วน lifetime ใช้กัน bug เฉย ๆ
-       */
-      const isExpired =
-        correctTarget !== undefined &&
-        (correctTarget.hasCompletedMovement ||
-          now - correctTarget.bornAt >= correctTarget.lifetime)
+      const isMovementCompleted =
+        correctTarget !== undefined && correctTarget.hasCompletedMovement
 
-      if (isExpired) {
+      const isSafetyTimeout =
+        correctTarget !== undefined &&
+        now - correctTarget.bornAt >= correctTarget.lifetime
+
+      const isExpired = isMovementCompleted || isSafetyTimeout
+
+      if (correctTarget && isExpired) {
         addMiss()
+
+        recordTargetEvent({
+          target: correctTarget,
+          now,
+          outcome: 'miss',
+          missReason: isMovementCompleted
+            ? 'movement_completed'
+            : 'safety_timeout',
+        })
 
         if (spawnIndexRef.current >= TOTAL_TARGETS) {
           finishGame(now)
@@ -170,6 +182,12 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     }
   }
 
+  function getGameTime(now = performance.now()) {
+    return startTimeRef.current === null
+      ? 0
+      : Math.round(now - startTimeRef.current)
+  }
+
   function resetStats(mode = selectedModeRef.current) {
     hitsRef.current = 0
     missesRef.current = 0
@@ -181,6 +199,9 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     previousTargetPointRef.current = null
 
     targetsRef.current = []
+    targetEventsRef.current = []
+    inputEventsRef.current = []
+
     distanceScheduleRef.current = createDistanceSchedule(mode)
 
     setHits(0)
@@ -188,7 +209,10 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setWrongClicks(0)
     setSpawnedTargetCount(0)
     setElapsedMs(0)
+
     setTargets([])
+    setTargetEvents([])
+    setInputEvents([])
   }
 
   function startGame() {
@@ -233,7 +257,6 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
 
     const mode = selectedModeRef.current
     const bounds = getPlayAreaBounds()
-
     const difficulty = getDifficulty(spawnIndexRef.current, mode)
 
     const distancePlan = getDistancePlan(
@@ -256,10 +279,6 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     const correctTarget = nextTargets.find((target) => target.isCorrect)
 
     if (correctTarget) {
-      /**
-       * ใช้จุดเกิดของเป้า ไม่ใช้ตำแหน่งล่าสุด
-       * เพื่อให้เป้าถัดไปไม่ขึ้นกับผู้เล่นคลิกเร็วหรือช้า
-       */
       previousTargetPointRef.current = {
         x: correctTarget.spawnX,
         y: correctTarget.spawnY,
@@ -280,12 +299,74 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setWrongClicks(wrongClicksRef.current)
   }
 
+  function recordTargetEvent({
+    target,
+    now,
+    outcome,
+    missReason,
+  }: {
+    target: MovingTarget
+    now: number
+    outcome: MovingTargetOutcome
+    missReason?: MovingTargetMissReason
+  }) {
+    const startTime = startTimeRef.current ?? target.bornAt
+    const responseTimeMs = Math.round(now - target.bornAt)
+
+    const event: MovingTargetEvent = {
+      targetIndex: target.targetIndex,
+      targetNumber: target.targetNumber,
+      stageIndex: target.stageIndex,
+      stageTargetIndex: target.stageTargetIndex,
+      mode: target.mode,
+
+      outcome,
+      missReason,
+
+      responseTimeMs: outcome === 'hit' ? responseTimeMs : null,
+
+      movementStepDistance: target.movementStepDistance,
+      remainingMoveDistance: Number(target.remainingMoveDistance.toFixed(2)),
+
+      plannedSpawnDistance: target.plannedSpawnDistance,
+      actualSpawnDistance: Number(target.actualSpawnDistance.toFixed(2)),
+
+      spawnX: Number(target.spawnX.toFixed(2)),
+      spawnY: Number(target.spawnY.toFixed(2)),
+      finalX: Number(target.x.toFixed(2)),
+      finalY: Number(target.y.toFixed(2)),
+
+      targetSize: target.size,
+      targetLifetime: target.lifetime,
+
+      createdAtMs: Math.round(target.bornAt - startTime),
+      completedAtMs: Math.round(now - startTime),
+    }
+
+    targetEventsRef.current = [...targetEventsRef.current, event]
+    setTargetEvents(targetEventsRef.current)
+  }
+
+  function recordInputEvent(event: MovingTargetInputEvent) {
+    inputEventsRef.current = [...inputEventsRef.current, event]
+    setInputEvents(inputEventsRef.current)
+  }
+
   function handleAreaClick() {
     if (gameStateRef.current !== 'running') {
       return
     }
 
+    const now = performance.now()
+    const correctTarget = targetsRef.current.find((target) => target.isCorrect)
+
     addMiss()
+
+    recordInputEvent({
+      eventType: 'empty_area_click',
+      gameTimeMs: getGameTime(now),
+      targetNumber: correctTarget?.targetNumber ?? null,
+    })
   }
 
   function handleTargetClick(target: MovingTarget) {
@@ -297,15 +378,34 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
 
     if (!target.isCorrect) {
       addWrongClick()
+
+      recordInputEvent({
+        eventType: 'wrong_target_click',
+        gameTimeMs: getGameTime(now),
+        targetNumber: target.targetNumber,
+        targetId: target.id,
+        x: Number(target.x.toFixed(2)),
+        y: Number(target.y.toFixed(2)),
+      })
+
       return
     }
+
+    const latestTarget =
+      targetsRef.current.find((item) => item.id === target.id) ?? target
 
     const nextHits = hitsRef.current + 1
 
     hitsRef.current = nextHits
-    totalResponseTimeRef.current += now - target.bornAt
+    totalResponseTimeRef.current += now - latestTarget.bornAt
 
     setHits(nextHits)
+
+    recordTargetEvent({
+      target: latestTarget,
+      now,
+      outcome: 'hit',
+    })
 
     if (spawnIndexRef.current >= TOTAL_TARGETS) {
       finishGame(now)
@@ -326,6 +426,8 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     elapsedMs,
     accuracy,
     averageResponseTime,
+    targetEvents,
+    inputEvents,
 
     startGame,
     stopGame,
