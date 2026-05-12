@@ -2,6 +2,10 @@ import { Link, useNavigate } from 'react-router'
 import { DualTaskIcon } from '../../../components/icons/AppIcons'
 import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
+import {
+  DUAL_TASK_DIFFICULTY_PRESETS,
+  type DualTaskDifficulty,
+} from './constants'
 import { DualTaskCanvas } from './components/DualTaskCanvas'
 import { SequenceOverlay } from './components/SequenceOverlay'
 import { useDualTaskGame } from './hooks/useDualTaskGame'
@@ -11,10 +15,13 @@ export default function DualTaskGamePage() {
 
   const {
     status,
+    difficultyMode,
+    selectedConfig,
     liveStats,
     activeSequence,
     targetRef,
     pointerRef,
+    setDifficultyMode,
     startGame,
     resetGame,
     updatePointer,
@@ -27,6 +34,7 @@ export default function DualTaskGamePage() {
   })
 
   const timeLeftSec = Math.ceil(liveStats.timeLeftMs / 1000)
+  const isPlaying = status === 'playing'
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-sp-bg font-sans text-sp-text">
@@ -52,20 +60,52 @@ export default function DualTaskGamePage() {
                 d="M10 19l-7-7m0 0l7-7m-7 7h18"
               />
             </svg>
+
             <span>กลับไปหน้าข้อมูลเกม</span>
           </Link>
 
+          <div className="mb-6 flex items-start gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sp-xl bg-sp-info-soft text-sp-info shadow-sp-brand">
+              <DualTaskIcon className="h-8 w-8" />
+            </div>
+
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-sp-secondary">
+                Dual Task Test
+              </p>
+
+              <h1 className="mt-2 text-4xl font-black text-sp-text md:text-5xl">
+                Aim & Input
+              </h1>
+
+              <p className="mt-3 max-w-3xl text-sp-text-muted">
+                ใช้เมาส์ติดตามเป้าหมายที่เคลื่อนที่ พร้อมกับกดปุ่มตามลำดับที่ปรากฏ
+              </p>
+            </div>
+          </div>
+
+          <DifficultySelector
+            value={difficultyMode}
+            disabled={isPlaying}
+            onChange={setDifficultyMode}
+          />
 
           <section className="rounded-sp-card border border-sp-border bg-sp-glass p-4 backdrop-blur-xl md:p-5">
             <div className="relative overflow-hidden rounded-sp-card border border-sp-border bg-sp-bg-soft">
-              {/* HUD ด้านบนในกรอบเกม */}
               <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 p-4 md:p-5">
                 <div className="flex flex-wrap gap-3">
                   <HudChip label="TIME" value={`${timeLeftSec}s`} />
+
+                  <HudChip
+                    label="MODE"
+                    value={selectedConfig.label.toUpperCase()}
+                  />
+
                   <HudChip
                     label="TRACK"
                     value={`${liveStats.trackingAccuracy.toFixed(1)}%`}
                   />
+
                   <HudChip
                     label="INPUT"
                     value={`${liveStats.inputAccuracy.toFixed(1)}%`}
@@ -83,21 +123,22 @@ export default function DualTaskGamePage() {
                 </div>
               </div>
 
-              {/* สนามเล่น */}
               <DualTaskCanvas
                 targetRef={targetRef}
                 pointerRef={pointerRef}
+                canvasWidth={selectedConfig.canvasWidth}
+                canvasHeight={selectedConfig.canvasHeight}
                 onPointerMove={updatePointer}
               />
 
-              {/* ลำดับกดอยู่กลางสนาม */}
               {status === 'playing' ? (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4">
-                  <SequenceOverlay sequence={activeSequence} />
+                <div className="pointer-events-none absolute inset-x-0 bottom-8 z-10 flex justify-center px-4">
+                  <div className="w-full max-w-md">
+                    <SequenceOverlay sequence={activeSequence} />
+                  </div>
                 </div>
               ) : null}
 
-              {/* overlay สำหรับคลิกเริ่ม */}
               {status !== 'playing' ? (
                 <button
                   type="button"
@@ -114,9 +155,14 @@ export default function DualTaskGamePage() {
                     </h2>
 
                     <p className="mt-3 max-w-xl text-sm leading-relaxed text-sp-text-muted md:text-base">
-                      คลิกในกรอบนี้เพื่อเริ่มทดสอบทันที
+                      โหมดปัจจุบันคือ {selectedConfig.label}
+                      {' '}คลิกในกรอบนี้เพื่อเริ่มทดสอบทันที
                       จากนั้นให้ใช้เมาส์ติดตามเป้าหมาย
                       และกดปุ่มตามลำดับที่แสดงตรงกลางสนาม
+                    </p>
+
+                    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-sp-text-subtle">
+                      Movement schedule: {selectedConfig.movementScheduleVersion}
                     </p>
                   </div>
                 </button>
@@ -127,6 +173,156 @@ export default function DualTaskGamePage() {
       </main>
 
       <SiteFooter />
+    </div>
+  )
+}
+
+type DifficultySelectorProps = {
+  value: DualTaskDifficulty
+  disabled: boolean
+  onChange: (mode: DualTaskDifficulty) => void
+}
+
+function DifficultySelector({
+  value,
+  disabled,
+  onChange,
+}: DifficultySelectorProps) {
+  const difficultyEntries = Object.entries(
+    DUAL_TASK_DIFFICULTY_PRESETS,
+  ) as Array<[DualTaskDifficulty, (typeof DUAL_TASK_DIFFICULTY_PRESETS)[DualTaskDifficulty]]>
+
+  return (
+    <section className="mb-6 rounded-sp-card border border-sp-border bg-sp-glass p-5 backdrop-blur-xl">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.22em] text-sp-secondary">
+            Difficulty Mode
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black text-sp-text">
+            เลือกระดับความยากก่อนเริ่มเกม
+          </h2>
+
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-sp-text-muted">
+            แต่ละโหมดใช้ movement schedule ต่างกัน โดยระบบจะค่อย ๆ เพิ่มขอบเขตการเคลื่อนที่
+            ความเร็ว และความถี่การเปลี่ยนทิศทางตามช่วงเวลา เพื่อให้ผู้เล่นเจอความยากที่มีกรอบมาตรฐานเดียวกัน
+          </p>
+        </div>
+
+        {disabled ? (
+          <p className="rounded-sp-pill border border-sp-border bg-sp-surface/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-sp-text-subtle">
+            Locked While Playing
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {difficultyEntries.map(([mode, config]) => (
+          <DifficultyButton
+            key={mode}
+            mode={mode}
+            label={config.label}
+            isActive={value === mode}
+            disabled={disabled}
+            targetRadius={config.targetRadius}
+            maxSpeed={config.targetMaxSpeed}
+            minSequenceLength={config.minSequenceLength}
+            maxSequenceLength={config.maxSequenceLength}
+            onClick={() => onChange(mode)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+type DifficultyButtonProps = {
+  mode: DualTaskDifficulty
+  label: string
+  isActive: boolean
+  disabled: boolean
+  targetRadius: number
+  maxSpeed: number
+  minSequenceLength: number
+  maxSequenceLength: number
+  onClick: () => void
+}
+
+function DifficultyButton({
+  mode,
+  label,
+  isActive,
+  disabled,
+  targetRadius,
+  maxSpeed,
+  minSequenceLength,
+  maxSequenceLength,
+  onClick,
+}: DifficultyButtonProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        'rounded-sp-xl border p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60',
+        isActive
+          ? 'border-sp-info bg-sp-info-soft shadow-sp-brand'
+          : 'border-sp-border bg-sp-surface/55 hover:-translate-y-0.5 hover:bg-sp-surface-strong',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-sp-text-subtle">
+            {mode}
+          </p>
+
+          <h3 className="mt-1 text-xl font-black text-sp-text">
+            {label}
+          </h3>
+        </div>
+
+        <span
+          className={[
+            'rounded-sp-pill px-3 py-1 text-xs font-black uppercase tracking-[0.14em]',
+            isActive
+              ? 'bg-sp-info text-sp-bg'
+              : 'bg-sp-bg/70 text-sp-text-muted',
+          ].join(' ')}
+        >
+          {isActive ? 'Selected' : 'Choose'}
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <DifficultyStat label="Target" value={`${targetRadius}px`} />
+        <DifficultyStat label="Max Speed" value={`${maxSpeed}`} />
+        <DifficultyStat
+          label="Sequence"
+          value={`${minSequenceLength}-${maxSequenceLength}`}
+        />
+        <DifficultyStat label="Duration" value="60s" />
+      </div>
+    </button>
+  )
+}
+
+type DifficultyStatProps = {
+  label: string
+  value: string
+}
+
+function DifficultyStat({ label, value }: DifficultyStatProps) {
+  return (
+    <div className="rounded-sp-lg border border-sp-border bg-sp-bg/45 px-3 py-2">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sp-text-subtle">
+        {label}
+      </p>
+
+      <p className="mt-1 font-black text-sp-text">
+        {value}
+      </p>
     </div>
   )
 }

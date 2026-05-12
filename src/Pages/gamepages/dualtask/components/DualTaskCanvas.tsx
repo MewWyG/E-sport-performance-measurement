@@ -1,17 +1,20 @@
 import { useEffect, useRef } from 'react'
 import type { MutableRefObject } from 'react'
-import { DUAL_TASK_CONFIG } from '../constants'
 import type { Point, Target } from '../types'
 
 type DualTaskCanvasProps = {
   targetRef: MutableRefObject<Target>
   pointerRef: MutableRefObject<Point>
+  canvasWidth: number
+  canvasHeight: number
   onPointerMove: (point: Point) => void
 }
 
 export function DualTaskCanvas({
   targetRef,
   pointerRef,
+  canvasWidth,
+  canvasHeight,
   onPointerMove,
 }: DualTaskCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -25,20 +28,17 @@ export function DualTaskCanvas({
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      const width = DUAL_TASK_CONFIG.canvasWidth
-      const height = DUAL_TASK_CONFIG.canvasHeight
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight)
 
-      ctx.clearRect(0, 0, width, height)
-
-      const bg = ctx.createLinearGradient(0, 0, width, height)
+      const bg = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight)
       bg.addColorStop(0, '#020617')
       bg.addColorStop(0.55, '#0f172a')
       bg.addColorStop(1, '#111827')
 
       ctx.fillStyle = bg
-      ctx.fillRect(0, 0, width, height)
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight)
 
-      drawGrid(ctx, width, height)
+      drawGrid(ctx, canvasWidth, canvasHeight)
 
       const target = targetRef.current
       const pointer = pointerRef.current
@@ -62,13 +62,13 @@ export function DualTaskCanvas({
         cancelAnimationFrame(renderFrameRef.current)
       }
     }
-  }, [pointerRef, targetRef])
+  }, [canvasHeight, canvasWidth, pointerRef, targetRef])
 
   function handlePointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect()
 
-    const scaleX = DUAL_TASK_CONFIG.canvasWidth / rect.width
-    const scaleY = DUAL_TASK_CONFIG.canvasHeight / rect.height
+    const scaleX = canvasWidth / rect.width
+    const scaleY = canvasHeight / rect.height
 
     onPointerMove({
       x: (event.clientX - rect.left) * scaleX,
@@ -79,8 +79,8 @@ export function DualTaskCanvas({
   return (
     <canvas
       ref={canvasRef}
-      width={DUAL_TASK_CONFIG.canvasWidth}
-      height={DUAL_TASK_CONFIG.canvasHeight}
+      width={canvasWidth}
+      height={canvasHeight}
       onPointerMove={handlePointerMove}
       className="aspect-[1100/640] w-full cursor-crosshair bg-sp-bg-soft"
     />

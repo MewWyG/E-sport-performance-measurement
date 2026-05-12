@@ -1,3 +1,9 @@
+import type {
+  DualTaskConfig,
+  DualTaskDifficulty,
+  MovementStage,
+} from './constants'
+
 export type GameStatus = 'idle' | 'playing' | 'finished'
 
 export type Point = {
@@ -35,10 +41,32 @@ export type DualTaskLiveStats = {
   multitaskScore: number
 }
 
+export type DualTaskConfigSnapshot = Pick<
+  DualTaskConfig,
+  | 'label'
+  | 'durationMs'
+  | 'canvasWidth'
+  | 'canvasHeight'
+  | 'targetRadius'
+  | 'targetBaseSpeed'
+  | 'targetMaxSpeed'
+  | 'sequenceSpawnDelayMs'
+  | 'sequenceLifetimeMs'
+  | 'minSequenceLength'
+  | 'maxSequenceLength'
+  | 'movementScheduleVersion'
+> & {
+  movementStages: MovementStage[]
+}
+
 export type DualTaskResult = {
   gameType: 'dual_task'
   sessionSeed: number
   durationMs: number
+
+  difficultyMode: DualTaskDifficulty
+  movementScheduleVersion: string
+  configSnapshot: DualTaskConfigSnapshot
 
   trackingAccuracy: number
   averageDistance: number

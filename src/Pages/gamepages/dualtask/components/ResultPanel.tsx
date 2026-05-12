@@ -18,16 +18,50 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
         <p className="mt-2 text-sm leading-relaxed text-sp-text-muted">
           ข้อมูลชุดนี้ถูกเก็บใน localStorage และสามารถนำไปส่ง API เพื่อบันทึกลงฐานข้อมูลได้
+          พร้อมข้อมูล difficulty และ movement schedule สำหรับตรวจสอบความเสมอภาคของการทดสอบ
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <ResultItem label="Tracking Accuracy" value={`${result.trackingAccuracy}%`} />
-        <ResultItem label="Input Accuracy" value={`${result.inputAccuracy}%`} />
-        <ResultItem label="Avg Reaction" value={`${result.avgInputReactionMs} ms`} />
-        <ResultItem label="Multitask Score" value={`${result.multitaskScore}`} />
-        <ResultItem label="Stability" value={`${result.stability}%`} />
-        <ResultItem label="Completed Sequences" value={`${result.completedSequences}`} />
+        <ResultItem
+          label="Difficulty Mode"
+          value={result.difficultyMode.toUpperCase()}
+        />
+
+        <ResultItem
+          label="Schedule Version"
+          value={result.movementScheduleVersion}
+        />
+
+        <ResultItem
+          label="Tracking Accuracy"
+          value={`${result.trackingAccuracy}%`}
+        />
+
+        <ResultItem
+          label="Input Accuracy"
+          value={`${result.inputAccuracy}%`}
+        />
+
+        <ResultItem
+          label="Avg Reaction"
+          value={`${result.avgInputReactionMs} ms`}
+        />
+
+        <ResultItem
+          label="Multitask Score"
+          value={`${result.multitaskScore}`}
+        />
+
+        <ResultItem
+          label="Stability"
+          value={`${result.stability}%`}
+        />
+
+        <ResultItem
+          label="Completed Sequences"
+          value={`${result.completedSequences}`}
+        />
       </div>
 
       <details className="mt-5">
@@ -55,7 +89,7 @@ function ResultItem({ label, value }: ResultItemProps) {
         {label}
       </p>
 
-      <p className="mt-1 text-xl font-black text-sp-text">
+      <p className="mt-1 break-words text-xl font-black text-sp-text">
         {value}
       </p>
     </div>
