@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
-import { TOTAL_TARGETS } from './config'
+import { GAME_MODE_CONFIG, TOTAL_TARGETS } from './config'
 import { useMovingTargetGame } from './hooks/useMovingTargetGame'
 import { MovingTargetPlayArea } from './ui/MovingTargetPlayArea'
 import { MovingTargetStatCard } from './ui/MovingTargetStatCard'
@@ -16,6 +16,7 @@ function MovingTargetGamePage() {
 
   const {
     gameState,
+    selectedMode,
     targets,
     hits,
     misses,
@@ -26,6 +27,7 @@ function MovingTargetGamePage() {
     averageResponseTime,
     startGame,
     stopGame,
+    setSelectedMode,
     handleAreaClick,
     handleTargetClick,
   } = useMovingTargetGame({ areaRef })
@@ -39,6 +41,7 @@ function MovingTargetGamePage() {
       elapsedMs,
       accuracy,
       averageResponseTime,
+      mode: selectedMode,
     }),
     [
       hits,
@@ -48,6 +51,7 @@ function MovingTargetGamePage() {
       elapsedMs,
       accuracy,
       averageResponseTime,
+      selectedMode,
     ],
   )
 
@@ -104,20 +108,22 @@ function MovingTargetGamePage() {
             </Link>
 
             <div className="w-fit rounded-sp-pill border border-sp-primary/20 bg-sp-primary/10 px-4 py-2 font-mono text-sm font-bold uppercase tracking-widest text-sp-primary-hover">
-              Moving Target
+              Moving Target · {GAME_MODE_CONFIG[selectedMode].label}
             </div>
           </div>
 
-          <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+            <MovingTargetStatCard
+              label="โหมด"
+              value={GAME_MODE_CONFIG[selectedMode].label}
+            />
+
             <MovingTargetStatCard
               label="เป้าจริง"
               value={`${spawnedTargetCount}/${TOTAL_TARGETS}`}
             />
 
-            <MovingTargetStatCard
-              label="ยิงโดน"
-              value={`${hits}`}
-            />
+            <MovingTargetStatCard label="ยิงโดน" value={`${hits}`} />
 
             <MovingTargetStatCard label="พลาด" value={`${misses}`} />
 
@@ -131,20 +137,19 @@ function MovingTargetGamePage() {
               value={`${accuracy}%`}
             />
 
-            <MovingTargetStatCard
-              label="เวลา"
-              value={formatTime(elapsedMs)}
-            />
+            <MovingTargetStatCard label="เวลา" value={formatTime(elapsedMs)} />
           </div>
 
           <MovingTargetPlayArea
             areaRef={areaRef}
             gameState={gameState}
+            selectedMode={selectedMode}
             targets={targets}
             stats={resultStats}
             onAreaClick={handleAreaClick}
             onStart={startGame}
             onStop={stopGame}
+            onModeChange={setSelectedMode}
             onTargetClick={handleTargetClick}
             onRetry={startGame}
             onBack={() => navigate('/librarygame')}

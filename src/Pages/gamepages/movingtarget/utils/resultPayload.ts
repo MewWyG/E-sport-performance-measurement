@@ -25,6 +25,7 @@ export function buildMovingTargetResultPayload({
     duration_ms: Math.round(stats.elapsedMs),
 
     raw_data_json: {
+      gameMode: stats.mode,
       totalTargets: TOTAL_TARGETS,
       spawnedTargetCount: stats.spawnedTargetCount,
       hits: stats.hits,

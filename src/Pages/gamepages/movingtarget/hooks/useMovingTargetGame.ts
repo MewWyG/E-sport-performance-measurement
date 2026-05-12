@@ -7,15 +7,25 @@ import {
   PLAY_AREA_MIN_WIDTH,
   TOTAL_TARGETS,
 } from '../config'
+import {
+  createDistanceSchedule,
+  getDistancePlan,
+  type DistanceSchedule,
+} from '../engine/distanceSchedule'
 import { getDifficulty } from '../engine/difficulty'
 import {
   calculateAccuracy,
   calculateAverageResponseTime,
 } from '../engine/scoring'
-import { createZoneUseCounts } from '../engine/spawnZones'
 import { createTargets } from '../engine/targetFactory'
 import { updateTargets } from '../engine/targetMovement'
-import type { Bounds, GameState, MovingTarget } from '../types'
+import type {
+  Bounds,
+  GameMode,
+  GameState,
+  MovingTarget,
+  Point,
+} from '../types'
 
 type UseMovingTargetGameParams = {
   areaRef: RefObject<HTMLDivElement | null>
@@ -25,6 +35,11 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const animationRef = useRef<number | null>(null)
 
   const gameStateRef = useRef<GameState>('ready')
+  const selectedModeRef = useRef<GameMode>('normal')
+  const distanceScheduleRef = useRef<DistanceSchedule>(
+    createDistanceSchedule('normal'),
+  )
+
   const targetsRef = useRef<MovingTarget[]>([])
   const hitsRef = useRef(0)
   const missesRef = useRef(0)
@@ -33,10 +48,10 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const startTimeRef = useRef<number | null>(null)
 
   const spawnIndexRef = useRef(0)
-  const previousZoneIdRef = useRef<number | null>(null)
-  const zoneUseCountsRef = useRef(createZoneUseCounts())
+  const previousTargetPointRef = useRef<Point | null>(null)
 
   const [gameState, setGameState] = useState<GameState>('ready')
+  const [selectedMode, setSelectedModeState] = useState<GameMode>('normal')
   const [targets, setTargets] = useState<MovingTarget[]>([])
   const [hits, setHits] = useState(0)
   const [misses, setMisses] = useState(0)
@@ -77,6 +92,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
       lastFrameTime = now
 
       const bounds = getPlayAreaBounds()
+
       const updatedTargets = updateTargets(
         targetsRef.current,
         deltaMs,
@@ -85,6 +101,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
       )
 
       const correctTarget = updatedTargets.find((target) => target.isCorrect)
+
       const isExpired =
         correctTarget !== undefined &&
         now - correctTarget.bornAt >= correctTarget.lifetime
@@ -115,6 +132,15 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     }
   }, [gameState])
 
+  function setSelectedMode(mode: GameMode) {
+    if (gameStateRef.current === 'running') {
+      return
+    }
+
+    selectedModeRef.current = mode
+    setSelectedModeState(mode)
+  }
+
   function getPlayAreaBounds(): Bounds {
     const width = areaRef.current?.clientWidth ?? PLAY_AREA_DEFAULT_WIDTH
     const height = areaRef.current?.clientHeight ?? PLAY_AREA_DEFAULT_HEIGHT
@@ -125,7 +151,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     }
   }
 
-  function resetStats() {
+  function resetStats(mode = selectedModeRef.current) {
     hitsRef.current = 0
     missesRef.current = 0
     wrongClicksRef.current = 0
@@ -134,8 +160,8 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     targetsRef.current = []
 
     spawnIndexRef.current = 0
-    previousZoneIdRef.current = null
-    zoneUseCountsRef.current = createZoneUseCounts()
+    previousTargetPointRef.current = null
+    distanceScheduleRef.current = createDistanceSchedule(mode)
 
     setHits(0)
     setMisses(0)
@@ -146,7 +172,9 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   }
 
   function startGame() {
-    resetStats()
+    const mode = selectedModeRef.current
+
+    resetStats(mode)
 
     const now = performance.now()
 
@@ -179,19 +207,22 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
       return
     }
 
+    const mode = selectedModeRef.current
     const bounds = getPlayAreaBounds()
+    const difficulty = getDifficulty(spawnIndexRef.current, mode)
 
-    // ใช้จำนวนเป้าจริงที่เกิดแล้วเป็นตัวคุม difficulty
-    // ไม่ใช้ hits เพราะถ้าผู้เล่นพลาด difficulty ควรยังเดินหน้าตามลำดับเป้า
-    const difficulty = getDifficulty(spawnIndexRef.current)
+    const distancePlan = getDistancePlan(
+      distanceScheduleRef.current,
+      spawnIndexRef.current,
+    )
 
     const nextTargets = createTargets({
       difficulty,
       bounds,
       now,
       spawnIndex: spawnIndexRef.current,
-      previousZoneId: previousZoneIdRef.current,
-      zoneUseCounts: zoneUseCountsRef.current,
+      previousPoint: previousTargetPointRef.current,
+      distancePlan,
     })
 
     spawnIndexRef.current += 1
@@ -200,8 +231,10 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     const correctTarget = nextTargets.find((target) => target.isCorrect)
 
     if (correctTarget) {
-      previousZoneIdRef.current = correctTarget.zoneId
-      zoneUseCountsRef.current[correctTarget.zoneId] += 1
+      previousTargetPointRef.current = {
+        x: correctTarget.anchorX,
+        y: correctTarget.anchorY,
+      }
     }
 
     targetsRef.current = nextTargets
@@ -255,6 +288,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
 
   return {
     gameState,
+    selectedMode,
     targets,
     hits,
     misses,
@@ -265,6 +299,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     averageResponseTime,
     startGame,
     stopGame,
+    setSelectedMode,
     handleAreaClick,
     handleTargetClick,
   }
