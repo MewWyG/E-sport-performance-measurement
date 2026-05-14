@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { WRONG_CLICK_LIMIT } from '../config'
+import type { RefObject } from 'react'
+import {
+  BOARD_DEFAULT_HEIGHT,
+  BOARD_DEFAULT_WIDTH,
+  BOARD_MIN_HEIGHT,
+  BOARD_MIN_WIDTH,
+  WRONG_CLICK_LIMIT,
+} from '../config'
 import { getLevelConfig } from '../engine/difficulty'
 import { createNumberSet } from '../engine/numberFactory'
 import { createNumberTiles } from '../engine/placement'
@@ -15,7 +22,11 @@ import type {
   NumberTileData,
 } from '../types'
 
-export function useNumberSearchGame() {
+type UseNumberSearchGameParams = {
+  areaRef: RefObject<HTMLDivElement | null>
+}
+
+export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
   const intervalRef = useRef<number | null>(null)
 
   const gameStateRef = useRef<GameState>('ready')
@@ -82,6 +93,16 @@ export function useNumberSearchGame() {
     return startTimeRef.current === null
       ? 0
       : Math.round(now - startTimeRef.current)
+  }
+
+  function getBoardBounds() {
+    const width = areaRef.current?.clientWidth ?? BOARD_DEFAULT_WIDTH
+    const height = areaRef.current?.clientHeight ?? BOARD_DEFAULT_HEIGHT
+
+    return {
+      width: Math.max(width, BOARD_MIN_WIDTH),
+      height: Math.max(height, BOARD_MIN_HEIGHT),
+    }
   }
 
   function getTileByValue(value: number) {
@@ -156,7 +177,11 @@ export function useNumberSearchGame() {
       levelConfig.playCount,
     )
 
-    const nextTiles = createNumberTiles(answerSequence, nextLevel)
+    const nextTiles = createNumberTiles(
+      answerSequence,
+      nextLevel,
+      getBoardBounds(),
+    )
 
     levelRef.current = nextLevel
     answerSequenceRef.current = answerSequence
