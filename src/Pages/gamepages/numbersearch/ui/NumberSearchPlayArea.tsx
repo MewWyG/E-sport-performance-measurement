@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import { BOARD_MIN_HEIGHT } from '../config'
 import type { GameState, NumberSearchStats, NumberTileData } from '../types'
 import { NumberSearchReadyState } from './NumberSearchReadyState'
@@ -5,6 +6,7 @@ import { NumberSearchResultState } from './NumberSearchResultState'
 import { NumberTile } from './NumberTile'
 
 type NumberSearchPlayAreaProps = {
+  areaRef: RefObject<HTMLDivElement | null>
   gameState: GameState
   tiles: NumberTileData[]
   stats: NumberSearchStats
@@ -16,6 +18,7 @@ type NumberSearchPlayAreaProps = {
 }
 
 export function NumberSearchPlayArea({
+  areaRef,
   gameState,
   tiles,
   stats,
@@ -27,6 +30,7 @@ export function NumberSearchPlayArea({
 }: NumberSearchPlayAreaProps) {
   return (
     <div
+      ref={areaRef}
       className="sp-game-grid-bg relative flex select-none items-center justify-center overflow-hidden rounded-sp-card border-2 border-sp-border p-8 text-center shadow-2xl"
       style={{ minHeight: BOARD_MIN_HEIGHT }}
     >

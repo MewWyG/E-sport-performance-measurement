@@ -12,6 +12,7 @@ import { buildNumberSearchResultPayload } from './utils/resultPayload'
 
 function NumberSearchGamePage() {
   const navigate = useNavigate()
+  const areaRef = useRef<HTMLDivElement | null>(null)
   const hasPreparedResultRef = useRef(false)
 
   const {
@@ -28,7 +29,7 @@ function NumberSearchGamePage() {
     startGame,
     stopGame,
     handleTileClick,
-  } = useNumberSearchGame()
+  } = useNumberSearchGame({ areaRef })
 
   const resultStats = useMemo(
     () => stats,
@@ -134,6 +135,7 @@ function NumberSearchGamePage() {
           )}
 
           <NumberSearchPlayArea
+            areaRef={areaRef}
             gameState={gameState}
             tiles={tiles}
             stats={resultStats}

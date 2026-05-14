@@ -5,20 +5,24 @@ export const NUMBER_POOL_STEP = 5
 export const BASE_PLAY_COUNT = 4
 
 export const TILE_SIZE = 56
+
+export const BOARD_MIN_WIDTH = 320
+export const BOARD_DEFAULT_WIDTH = 900
 export const BOARD_MIN_HEIGHT = 520
+export const BOARD_DEFAULT_HEIGHT = 520
 
 /**
- * margin ของพื้นที่วางตัวเลข หน่วยเป็น percent
+ * margin ของพื้นที่วางตัวเลข หน่วยเป็น px
  * กันไม่ให้เลขชิดขอบสนามเกินไป
  */
-export const TILE_PLACEMENT_MARGIN_X_PERCENT = 9
-export const TILE_PLACEMENT_MARGIN_Y_PERCENT = 12
+export const TILE_PLACEMENT_MARGIN_X_PX = 56
+export const TILE_PLACEMENT_MARGIN_Y_PX = 64
 
 /**
- * ระยะห่างขั้นต่ำระหว่างตัวเลข หน่วยเป็น percent
+ * ระยะห่างขั้นต่ำระหว่างจุดศูนย์กลางของตัวเลข หน่วยเป็น px
  * ค่านี้ใช้กันไม่ให้ตัวเลขอยู่ติดกันหรือทับกัน
  */
-export const TILE_MIN_DISTANCE_PERCENT = 14
+export const TILE_MIN_DISTANCE_PX = 96
 
 /**
  * จำนวนครั้งที่ระบบจะพยายามสุ่มตำแหน่งใหม่
@@ -30,4 +34,4 @@ export const TILE_PLACEMENT_MAX_ATTEMPTS = 120
  * ถ้า level สูงมากและตัวเลขเยอะจนวางด้วยระยะเดิมไม่ได้
  * จะค่อย ๆ ลดระยะห่างขั้นต่ำลง แต่ไม่ต่ำกว่าค่านี้
  */
-export const TILE_MIN_DISTANCE_FALLBACK_PERCENT = 8
+export const TILE_MIN_DISTANCE_FALLBACK_PX = 64
