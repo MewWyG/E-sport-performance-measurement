@@ -68,6 +68,26 @@ const games = [
   path: '/gameinfo/prediction-intercept',
   isAvailable: true,
   },
+  {
+    id: 'spray-control',
+    title: 'Spray Control',
+    description:
+      'ทดสอบการคุมเมาส์ตอนสเปรย์ — ลากสวน recoil ให้กระสุนเกาะวงเป้าทั้งแม็ก',
+    icon: '🎯',
+    iconClassName: 'bg-sp-danger-soft text-sp-danger',
+    path: '/gameinfo/spray-control',
+    isAvailable: true,
+  },
+  {
+    id: 'auditory-localization',
+    title: 'Auditory Localization',
+    description:
+      'ฟังเสียง 3D ผ่านหูฟัง แล้วระบุตำแหน่งของเสียง ทั้งทิศและระยะใกล้-ไกล',
+    icon: '🎧',
+    iconClassName: 'bg-sp-primary/15 text-sp-primary-hover',
+    path: '/gameinfo/auditory-localization',
+    isAvailable: true,
+  },
 ]
 
 export function LibraryGamePage() {

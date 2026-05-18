@@ -1,0 +1,16 @@
+import type { GameResult } from "../../../../shared/gameModule";
+import type { GameResultPayload } from "../../../../types/gameResult";
+
+/** แปลง internal GameResult → SkillPulse GameResultPayload (snake_case) */
+export function buildSprayControlResultPayload(result: GameResult): GameResultPayload {
+  return {
+    game_id: "spray-control",
+    session_id: result.sessionId ?? null,
+    player_id: result.playerId ?? null,
+    score: Number(result.score.toFixed(2)),
+    accuracy: Number((result.accuracy ?? 0).toFixed(2)),
+    reaction_time_ms: Math.round(result.reactionTimeMs ?? 0),
+    duration_ms: Math.round(result.durationMs),
+    raw_data_json: result.rawData,
+  };
+}
