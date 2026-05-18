@@ -22,6 +22,11 @@ import PredictionInterceptGamePage from './Pages/gamepages/prediction_intercept/
 import { NumberSearchInfoPage } from './Pages/gameinfo/numbersearch_info/numberSearch_info'
 import NumberSearchGamePage from './Pages/gamepages/numbersearch/numberSearch'
 
+import { SprayControlInfoPage } from './Pages/gameinfo/spray_control_info/SprayControl_info'
+import SprayControlGamePage from './Pages/gamepages/spray_control/SprayControlGame'
+import { AuditoryLocalizationInfoPage } from './Pages/gameinfo/auditory_localization_info/AuditoryLocalization_info'
+import AuditoryLocalizationGamePage from './Pages/gamepages/auditory_localization/AuditoryLocalizationGame'
+
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -49,6 +54,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
         <Route path="/gameinfo/numbersearch" element={<NumberSearchInfoPage />} />
         <Route path="/gameplay/numbersearch" element={<NumberSearchGamePage />} />
+
+        <Route path="/gameinfo/spray-control" element={<SprayControlInfoPage />} />
+        <Route path="/gameplay/spray-control" element={<SprayControlGamePage />} />
+
+        <Route path="/gameinfo/auditory-localization" element={<AuditoryLocalizationInfoPage />} />
+        <Route path="/gameplay/auditory-localization" element={<AuditoryLocalizationGamePage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

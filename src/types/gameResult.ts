@@ -1,4 +1,8 @@
-export type GameId = 'moving-target' | 'number-search'
+export type GameId =
+  | 'moving-target'
+  | 'number-search'
+  | 'spray-control'
+  | 'auditory-localization'
 
 export type GameResultPayload = {
   session_id?: string | null
