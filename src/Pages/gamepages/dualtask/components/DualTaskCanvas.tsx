@@ -82,7 +82,7 @@ export function DualTaskCanvas({
       width={canvasWidth}
       height={canvasHeight}
       onPointerMove={handlePointerMove}
-      className="aspect-[1100/640] w-full cursor-crosshair bg-sp-bg-soft"
+      className="block h-auto w-full cursor-crosshair bg-sp-bg-soft"
     />
   )
 }

@@ -203,20 +203,11 @@ function TestModeSelector({
   >
 
   return (
-    <section className="mb-6 rounded-sp-card border border-sp-border bg-sp-glass p-5 backdrop-blur-xl">
+    <section className="mb-4 rounded-sp-card border border-sp-border bg-sp-glass p-3 backdrop-blur-xl">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-sp-secondary">
-            Test Mode
-          </p>
-
-          <h2 className="mt-2 text-2xl font-black text-sp-text">
-            เลือกระดับการทดสอบก่อนเริ่มเกม
-          </h2>
-
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-sp-text-muted">
-            แต่ละโหมดใช้ question schedule ต่างกัน โดยระบบจะควบคุมประเภทโจทย์ตามช่วงเวลา
-            และกระจายประเภทโจทย์ให้สมดุล เพื่อให้การทดสอบมีความเสมอภาคมากขึ้น
+            Difficulty Mode
           </p>
         </div>
 
@@ -235,12 +226,6 @@ function TestModeSelector({
             label={config.label}
             isActive={value === mode}
             disabled={disabled}
-            initialDifficulty={config.initialDifficulty}
-            maxDifficulty={config.maxDifficulty}
-            streakToIncreaseDifficulty={config.streakToIncreaseDifficulty}
-            mistakesToDecreaseDifficulty={config.mistakesToDecreaseDifficulty}
-            scheduleVersion={config.scheduleVersion}
-            stageCount={config.questionStages.length}
             onClick={() => onChange(mode)}
           />
         ))}
@@ -254,12 +239,6 @@ type TestModeButtonProps = {
   label: string
   isActive: boolean
   disabled: boolean
-  initialDifficulty: number
-  maxDifficulty: number
-  streakToIncreaseDifficulty: number
-  mistakesToDecreaseDifficulty: number
-  scheduleVersion: string
-  stageCount: number
   onClick: () => void
 }
 
@@ -268,12 +247,6 @@ function TestModeButton({
   label,
   isActive,
   disabled,
-  initialDifficulty,
-  maxDifficulty,
-  streakToIncreaseDifficulty,
-  mistakesToDecreaseDifficulty,
-  scheduleVersion,
-  stageCount,
   onClick,
 }: TestModeButtonProps) {
   return (
@@ -310,38 +283,6 @@ function TestModeButton({
           {isActive ? 'Selected' : 'Choose'}
         </span>
       </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <ModeStat label="Initial" value={`${initialDifficulty}`} />
-        <ModeStat label="Max" value={`${maxDifficulty}`} />
-        <ModeStat label="Streak" value={`${streakToIncreaseDifficulty}`} />
-        <ModeStat label="Mistakes" value={`${mistakesToDecreaseDifficulty}`} />
-        <ModeStat label="Stages" value={`${stageCount}`} />
-        <ModeStat label="Duration" value="60s" />
-      </div>
-
-      <p className="mt-4 break-words text-xs font-semibold uppercase tracking-[0.14em] text-sp-text-subtle">
-        {scheduleVersion}
-      </p>
     </button>
-  )
-}
-
-type ModeStatProps = {
-  label: string
-  value: string
-}
-
-function ModeStat({ label, value }: ModeStatProps) {
-  return (
-    <div className="rounded-sp-lg border border-sp-border bg-sp-bg/45 px-3 py-2">
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sp-text-subtle">
-        {label}
-      </p>
-
-      <p className="mt-1 font-black text-sp-text">
-        {value}
-      </p>
-    </div>
   )
 }

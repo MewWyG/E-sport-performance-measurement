@@ -9,16 +9,28 @@ type Waypoint = {
   y: number
 }
 
+type MovementBounds = {
+  centerX: number
+  centerY: number
+  halfWidth: number
+  halfHeight: number
+}
+
 export function createInitialTarget(
   rng: Rng,
   config: DualTaskConfig = DUAL_TASK_CONFIG,
 ): Target {
   const firstStage = config.movementStages[0]
+  const centerX = config.canvasWidth / 2
+  const centerY = config.canvasHeight / 2
+
   const waypoint = createWaypointInStage(
     rng,
     config,
     firstStage,
     config.targetRadius,
+    centerX,
+    centerY,
   )
 
   const dx = waypoint.x - config.canvasWidth / 2
@@ -82,7 +94,14 @@ export function updateTargetPosition({
     !waypointIsValid || distanceToWaypoint <= getWaypointReachDistance(stage)
 
   if (shouldPickNewWaypoint) {
-    const waypoint = createWaypointInStage(rng, config, stage, target.radius)
+    const waypoint = createWaypointInStage(
+      rng,
+      config,
+      stage,
+      target.radius,
+      target.x,
+      target.y,
+    )
     waypointX = waypoint.x
     waypointY = waypoint.y
   }
@@ -168,7 +187,14 @@ export function updateTargetPosition({
     vx = pulled.vx
     vy = pulled.vy
 
-    const waypoint = createWaypointInStage(rng, config, stage, target.radius)
+    const waypoint = createWaypointInStage(
+      rng,
+      config,
+      stage,
+      target.radius,
+      x,
+      y,
+    )
     waypointX = waypoint.x
     waypointY = waypoint.y
   }
@@ -202,24 +228,70 @@ function createWaypointInStage(
   config: DualTaskConfig,
   stage: MovementStage,
   radius: number,
+  currentX?: number,
+  currentY?: number,
 ): Waypoint {
-  const centerX = config.canvasWidth / 2
-  const centerY = config.canvasHeight / 2
+  const bounds = getMovementBounds(config, stage, radius)
 
-  const allowedRadius = getAllowedMovementRadius(config, stage, radius)
-
-  const angle = randomFloat(rng, 0, Math.PI * 2)
+  const stageScale = getStageScale(config, stage, radius)
 
   /**
-   * ใช้ sqrt เพื่อให้ waypoint กระจายค่อนข้างสม่ำเสมอในพื้นที่วงกลม
-   * ถ้าไม่ใช้ sqrt จุดจะไปกองใกล้กลางมากเกินไป
+   * ถ้า stage กว้างขึ้น ให้สุ่มออกจากโซนกลางมากขึ้น
+   * เพื่อไม่ให้ target วนอยู่กลางสนามตลอด
    */
-  const distance = Math.sqrt(randomFloat(rng, 0, 1)) * allowedRadius
+  const innerScale = stageScale < 0.35 ? 0 : 0.35
 
-  return {
-    x: centerX + Math.cos(angle) * distance,
-    y: centerY + Math.sin(angle) * distance,
+  const minX = bounds.centerX - bounds.halfWidth
+  const maxX = bounds.centerX + bounds.halfWidth
+  const minY = bounds.centerY - bounds.halfHeight
+  const maxY = bounds.centerY + bounds.halfHeight
+
+  const innerHalfWidth = bounds.halfWidth * innerScale
+  const innerHalfHeight = bounds.halfHeight * innerScale
+
+  const minTravelDistance = Math.max(
+    40,
+    Math.hypot(bounds.halfWidth, bounds.halfHeight) * 0.38,
+  )
+
+  let fallbackWaypoint: Waypoint = {
+    x: bounds.centerX,
+    y: bounds.centerY,
   }
+
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const waypoint = {
+      x: randomFloat(rng, minX, maxX),
+      y: randomFloat(rng, minY, maxY),
+    }
+
+    fallbackWaypoint = waypoint
+
+    const dxFromCenter = Math.abs(waypoint.x - bounds.centerX)
+    const dyFromCenter = Math.abs(waypoint.y - bounds.centerY)
+
+    const isOutsideInnerBox =
+      dxFromCenter >= innerHalfWidth || dyFromCenter >= innerHalfHeight
+
+    if (!isOutsideInnerBox) {
+      continue
+    }
+
+    if (currentX === undefined || currentY === undefined) {
+      return waypoint
+    }
+
+    const travelDistance = Math.hypot(
+      waypoint.x - currentX,
+      waypoint.y - currentY,
+    )
+
+    if (travelDistance >= minTravelDistance) {
+      return waypoint
+    }
+  }
+
+  return fallbackWaypoint
 }
 
 type IsPointInsideStageParams = {
@@ -237,15 +309,14 @@ function isPointInsideStage({
   stage,
   radius,
 }: IsPointInsideStageParams): boolean {
-  const centerX = config.canvasWidth / 2
-  const centerY = config.canvasHeight / 2
+  const bounds = getMovementBounds(config, stage, radius)
 
-  const allowedRadius = getAllowedMovementRadius(config, stage, radius)
-
-  const dx = x - centerX
-  const dy = y - centerY
-
-  return Math.hypot(dx, dy) <= allowedRadius
+  return (
+    x >= bounds.centerX - bounds.halfWidth &&
+    x <= bounds.centerX + bounds.halfWidth &&
+    y >= bounds.centerY - bounds.halfHeight &&
+    y <= bounds.centerY + bounds.halfHeight
+  )
 }
 
 function getAllowedMovementRadius(
@@ -256,6 +327,38 @@ function getAllowedMovementRadius(
   const maxCanvasRadius = Math.min(config.canvasWidth, config.canvasHeight) / 2 - radius
 
   return Math.max(8, Math.min(stage.movementRadius, maxCanvasRadius))
+}
+
+function getStageScale(
+  config: DualTaskConfig,
+  stage: MovementStage,
+  radius: number,
+): number {
+  const maxCircleRadius =
+    Math.min(config.canvasWidth, config.canvasHeight) / 2 - radius
+
+  return Math.min(1, stage.movementRadius / maxCircleRadius)
+}
+
+function getMovementBounds(
+  config: DualTaskConfig,
+  stage: MovementStage,
+  radius: number,
+): MovementBounds {
+  const centerX = config.canvasWidth / 2
+  const centerY = config.canvasHeight / 2
+
+  const maxHalfWidth = config.canvasWidth / 2 - radius
+  const maxHalfHeight = config.canvasHeight / 2 - radius
+
+  const scale = getStageScale(config, stage, radius)
+
+  return {
+    centerX,
+    centerY,
+    halfWidth: Math.max(20, maxHalfWidth * scale),
+    halfHeight: Math.max(20, maxHalfHeight * scale),
+  }
 }
 
 function getWaypointReachDistance(stage: MovementStage): number {
@@ -317,40 +420,23 @@ function pullBackInsideStage({
   stage,
   radius,
 }: PullBackInsideStageParams) {
-  const centerX = config.canvasWidth / 2
-  const centerY = config.canvasHeight / 2
+  const bounds = getMovementBounds(config, stage, radius)
 
-  const allowedRadius = getAllowedMovementRadius(config, stage, radius)
+  const minX = bounds.centerX - bounds.halfWidth
+  const maxX = bounds.centerX + bounds.halfWidth
+  const minY = bounds.centerY - bounds.halfHeight
+  const maxY = bounds.centerY + bounds.halfHeight
 
-  const dx = x - centerX
-  const dy = y - centerY
-  const distance = Math.max(Math.hypot(dx, dy), 0.001)
+  const nextX = clamp(x, minX, maxX)
+  const nextY = clamp(y, minY, maxY)
 
-  const normalX = dx / distance
-  const normalY = dy / distance
-
-  /**
-   * แทนที่จะเด้งกลับแบบแข็ง ๆ
-   * เรา clamp ตำแหน่งกลับเข้าขอบเขต แล้วตัด velocity ที่พุ่งออกด้านนอกออก
-   */
-  const safeRadius = allowedRadius * 0.96
-
-  const nextX = centerX + normalX * safeRadius
-  const nextY = centerY + normalY * safeRadius
-
-  const velocityDotNormal = vx * normalX + vy * normalY
-
-  if (velocityDotNormal > 0) {
-    vx -= velocityDotNormal * normalX
-    vy -= velocityDotNormal * normalY
+  if (nextX !== x) {
+    vx *= -0.15
   }
 
-  const tangentX = -normalY
-  const tangentY = normalX
-  const tangentSpeed = vx * tangentX + vy * tangentY
-
-  vx = tangentX * tangentSpeed
-  vy = tangentY * tangentSpeed
+  if (nextY !== y) {
+    vy *= -0.15
+  }
 
   return {
     x: nextX,

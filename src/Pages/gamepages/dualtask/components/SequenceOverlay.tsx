@@ -6,17 +6,17 @@ type SequenceOverlayProps = {
 
 export function SequenceOverlay({ sequence }: SequenceOverlayProps) {
   return (
-    <div className="rounded-sp-card border border-sp-border bg-sp-glass/85 px-5 py-4 text-center shadow-sp-brand backdrop-blur-xl">
-      <h3 className="mt-2 text-lg font-black text-sp-text">
+    <div className="px-2 py-2 text-center">
+      <h3 className="text-lg font-black text-sp-text">
         กดปุ่มตามลำดับ
       </h3>
 
       {!sequence ? (
-        <p className="mt-3 text-sm text-sp-text-muted">
+        <p className="mt-2 text-sm text-sp-text-muted">
           รอชุดปุ่มถัดไป...
         </p>
       ) : (
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
           {sequence.keys.map((key, index) => {
             const isDone = index < sequence.currentIndex
             const isCurrent = index === sequence.currentIndex
