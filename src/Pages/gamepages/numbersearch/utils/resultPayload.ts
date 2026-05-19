@@ -45,6 +45,7 @@ export function buildNumberSearchResultPayload({
         durationMs: Math.round(stats.elapsedMs),
       },
 
+      levelEvents: stats.levelEvents,
       targetEvents: stats.targetEvents,
       inputEvents: stats.inputEvents,
     },

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { SiteFooter } from '../../../components/layout/SiteFooter'
 import { SiteHeader } from '../../../components/layout/SiteHeader'
-import { WRONG_CLICK_LIMIT } from './config'
+import { MAX_NUMBER_SEARCH_LEVEL } from './config'
 import { useNumberSearchGame } from './hooks/useNumberSearchGame'
 import { NumberSearchPlayArea } from './ui/NumberSearchPlayArea'
 import { NumberSearchProgressPanel } from './ui/NumberSearchProgressPanel'
@@ -44,6 +44,7 @@ function NumberSearchGamePage() {
       stats.score,
       stats.targetEvents,
       stats.inputEvents,
+      stats.levelEvents,
     ],
   )
 
@@ -105,7 +106,10 @@ function NumberSearchGamePage() {
           </div>
 
           <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            <NumberSearchStatCard label="Level" value={`${level}`} />
+            <NumberSearchStatCard
+              label="Level"
+              value={`${level}/${MAX_NUMBER_SEARCH_LEVEL}`}
+            />
 
             <NumberSearchStatCard
               label="กดถูก"
@@ -114,7 +118,7 @@ function NumberSearchGamePage() {
 
             <NumberSearchStatCard
               label="กดผิด"
-              value={`${wrongClicks}/${WRONG_CLICK_LIMIT}`}
+              value={`${wrongClicks}`}
             />
 
             <NumberSearchStatCard
@@ -153,7 +157,7 @@ function NumberSearchGamePage() {
             </span>
 
             <span className="font-mono font-bold text-sp-primary-hover">
-              ผิดครบ {WRONG_CLICK_LIMIT} ครั้ง เกมจบ
+              เล่นให้ครบ Level {MAX_NUMBER_SEARCH_LEVEL} แล้วระบบจะสรุปผล
             </span>
           </div>
         </section>

@@ -1,4 +1,5 @@
 import { AppButton } from '../../../../components/common/AppButton'
+import { MAX_NUMBER_SEARCH_LEVEL } from '../config'
 
 type NumberSearchReadyStateProps = {
   onStart: () => void
@@ -18,8 +19,9 @@ export function NumberSearchReadyState({
       </h1>
 
       <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-sp-text-muted">
-        คลิกตัวเลขเรียงจากน้อยไปมาก เล่นไปเรื่อย ๆ เป็น Level
-        และพยายามอย่ากดผิดครบ 3 ครั้ง
+        คลิกตัวเลขเรียงจากน้อยไปมาก เล่นให้ครบ Level{' '}
+        {MAX_NUMBER_SEARCH_LEVEL} ระบบจะจับเวลารวม เวลาแต่ละ Level
+        และบันทึกจำนวนครั้งที่กดผิด
       </p>
 
       <AppButton

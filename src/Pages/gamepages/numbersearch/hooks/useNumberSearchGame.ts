@@ -5,7 +5,7 @@ import {
   BOARD_DEFAULT_WIDTH,
   BOARD_MIN_HEIGHT,
   BOARD_MIN_WIDTH,
-  WRONG_CLICK_LIMIT,
+  MAX_NUMBER_SEARCH_LEVEL,
 } from '../config'
 import { getLevelConfig } from '../engine/difficulty'
 import { createNumberSet } from '../engine/numberFactory'
@@ -17,6 +17,7 @@ import {
 import type {
   GameState,
   NumberSearchInputEvent,
+  NumberSearchLevelEvent,
   NumberSearchStats,
   NumberSearchTargetEvent,
   NumberTileData,
@@ -39,6 +40,11 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
 
   const startTimeRef = useRef<number | null>(null)
   const targetStartedAtRef = useRef<number | null>(null)
+  const levelStartedAtRef = useRef<number | null>(null)
+
+  const levelCorrectStartRef = useRef(0)
+  const levelWrongStartRef = useRef(0)
+  const levelFindTimeStartRef = useRef(0)
 
   const answerSequenceRef = useRef<number[]>([])
   const clickedNumbersRef = useRef<number[]>([])
@@ -47,6 +53,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
   const tilesRef = useRef<NumberTileData[]>([])
   const targetEventsRef = useRef<NumberSearchTargetEvent[]>([])
   const inputEventsRef = useRef<NumberSearchInputEvent[]>([])
+  const levelEventsRef = useRef<NumberSearchLevelEvent[]>([])
 
   const [gameState, setGameState] = useState<GameState>('ready')
   const [level, setLevel] = useState(1)
@@ -64,6 +71,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     NumberSearchTargetEvent[]
   >([])
   const [inputEvents, setInputEvents] = useState<NumberSearchInputEvent[]>([])
+  const [levelEvents, setLevelEvents] = useState<NumberSearchLevelEvent[]>([])
 
   useEffect(() => {
     gameStateRef.current = gameState
@@ -120,6 +128,11 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
 
     startTimeRef.current = null
     targetStartedAtRef.current = null
+    levelStartedAtRef.current = null
+
+    levelCorrectStartRef.current = 0
+    levelWrongStartRef.current = 0
+    levelFindTimeStartRef.current = 0
 
     answerSequenceRef.current = []
     clickedNumbersRef.current = []
@@ -128,6 +141,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     tilesRef.current = []
     targetEventsRef.current = []
     inputEventsRef.current = []
+    levelEventsRef.current = []
 
     setLevel(1)
     setCompletedLevels(0)
@@ -141,6 +155,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setScore(0)
     setTargetEvents([])
     setInputEvents([])
+    setLevelEvents([])
   }
 
   function startGame() {
@@ -188,6 +203,12 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     clickedNumbersRef.current = []
     currentIndexRef.current = 0
     targetStartedAtRef.current = now
+    levelStartedAtRef.current = now
+
+    levelCorrectStartRef.current = correctClicksRef.current
+    levelWrongStartRef.current = wrongClicksRef.current
+    levelFindTimeStartRef.current = totalFindTimeRef.current
+
     totalNumbersShownRef.current += answerSequence.length
     tilesRef.current = nextTiles
 
@@ -275,6 +296,38 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setInputEvents(inputEventsRef.current)
   }
 
+  function recordCompletedLevelEvent(now = performance.now()) {
+    const levelStartedAt = levelStartedAtRef.current ?? now
+
+    const levelCorrectClicks =
+      correctClicksRef.current - levelCorrectStartRef.current
+
+    const levelWrongClicks =
+      wrongClicksRef.current - levelWrongStartRef.current
+
+    const levelFindTime =
+      totalFindTimeRef.current - levelFindTimeStartRef.current
+
+    const event: NumberSearchLevelEvent = {
+      level: levelRef.current,
+      numberCount: answerSequenceRef.current.length,
+
+      startedAtMs: getGameTime(levelStartedAt),
+      completedAtMs: getGameTime(now),
+      durationMs: Math.round(now - levelStartedAt),
+
+      correctClicks: levelCorrectClicks,
+      wrongClicks: levelWrongClicks,
+      averageFindTime: calculateAverageFindTime(
+        levelFindTime,
+        levelCorrectClicks,
+      ),
+    }
+
+    levelEventsRef.current = [...levelEventsRef.current, event]
+    setLevelEvents(levelEventsRef.current)
+  }
+
   function handleTileClick(value: number) {
     if (gameStateRef.current !== 'running') {
       return
@@ -297,11 +350,6 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
       })
 
       updateScore()
-
-      if (nextWrongClicks >= WRONG_CLICK_LIMIT) {
-        finishGame(now)
-      }
-
       return
     }
 
@@ -348,14 +396,22 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
 
     if (nextIndex >= answerSequence.length) {
       const nextCompletedLevels = completedLevelsRef.current + 1
-      const nextLevel = levelRef.current + 1
+      const currentLevel = levelRef.current
+      const nextLevel = currentLevel + 1
 
       completedLevelsRef.current = nextCompletedLevels
       setCompletedLevels(nextCompletedLevels)
 
+      recordCompletedLevelEvent(now)
+
+      if (currentLevel >= MAX_NUMBER_SEARCH_LEVEL) {
+        updateScore(MAX_NUMBER_SEARCH_LEVEL)
+        finishGame(now)
+        return
+      }
+
       updateScore(nextLevel)
       startLevel(nextLevel, now)
-
       return
     }
 
@@ -385,6 +441,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     score,
     targetEvents,
     inputEvents,
+    levelEvents,
   }
 
   return {
@@ -401,6 +458,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
 
     targetEvents,
     inputEvents,
+    levelEvents,
 
     startGame,
     stopGame,
