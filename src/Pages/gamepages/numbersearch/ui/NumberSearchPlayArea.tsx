@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { BOARD_MIN_HEIGHT } from '../config'
+import { BOARD_DEFAULT_HEIGHT } from '../config'
 import type { GameState, NumberSearchStats, NumberTileData } from '../types'
 import { NumberSearchReadyState } from './NumberSearchReadyState'
 import { NumberSearchResultState } from './NumberSearchResultState'
@@ -31,11 +31,13 @@ export function NumberSearchPlayArea({
   return (
     <div
       ref={areaRef}
-      className="sp-game-grid-bg relative flex select-none items-center justify-center overflow-hidden rounded-sp-card border-2 border-sp-border p-8 text-center shadow-2xl"
-      style={{ minHeight: BOARD_MIN_HEIGHT }}
+      className="sp-game-grid-bg relative w-full overflow-hidden rounded-sp-card border-2 border-sp-border shadow-2xl"
+      style={{ height: BOARD_DEFAULT_HEIGHT }}
     >
       {gameState === 'ready' && (
-        <NumberSearchReadyState onStart={onStart} />
+        <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
+          <NumberSearchReadyState onStart={onStart} />
+        </div>
       )}
 
       {gameState === 'running' && (
@@ -62,11 +64,13 @@ export function NumberSearchPlayArea({
       )}
 
       {gameState === 'finished' && (
-        <NumberSearchResultState
-          stats={stats}
-          onRetry={onRetry}
-          onBack={onBack}
-        />
+        <div className="absolute inset-0 overflow-y-auto px-6 py-10 text-center md:px-10">
+          <NumberSearchResultState
+            stats={stats}
+            onRetry={onRetry}
+            onBack={onBack}
+          />
+        </div>
       )}
     </div>
   )

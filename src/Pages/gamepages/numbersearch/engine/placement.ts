@@ -1,5 +1,6 @@
 import {
   NUMBER_SEARCH_PATH_DISTANCE_CONFIG,
+  NUMBER_SEARCH_PLACEMENT_FALLBACK_CONFIG,
   TILE_MIN_DISTANCE_FALLBACK_PX,
   TILE_MIN_DISTANCE_PX,
   TILE_PLACEMENT_MARGIN_X_PX,
@@ -15,19 +16,16 @@ export type NumberSearchBoardBounds = {
 }
 
 /**
- * Number Search Placement System
- *
- * หน้าที่ของไฟล์นี้:
- * - วางตำแหน่งตัวเลขบนสนามเล่น
- * - คุมระยะจากจุดกลางสนามไปเลขแรก
- * - คุมระยะระหว่างเลขที่ต้องกดต่อกัน
- * - สุ่มทิศทาง เพื่อให้แต่ละรอบไม่เหมือนกัน
- * - คุมมุมเลี้ยว เพื่อไม่ให้ตัวเลขเรียงเป็นเส้นตรง
- * - คุมระยะห่างขั้นต่ำ เพื่อไม่ให้ตัวเลขชิดกันเกินไป
- *
- * สำคัญ:
- * ถ้า controlled path เปิดอยู่ ระบบจะพยายามรักษาระยะตาม config
- * และจะไม่ fallback ไปเป็น scattered random เพราะจะทำให้ระยะไม่เท่ากัน
+ * เปิด debug เพื่อเช็กว่า actual distance ตรงกับ config หรือไม่
+ * ก่อน commit จริงควรเปลี่ยนเป็น false
+ */
+const DEBUG_PLACEMENT_DISTANCE = true
+
+/**
+ * วางตัวเลขบนสนาม
+ * - ระยะมาจาก config
+ * - ทิศทางสุ่มจากทิศที่วางได้จริง
+ * - ถ้า controlled path เปิดอยู่ จะไม่สุ่มตำแหน่งมั่วแทน
  */
 export function createNumberTiles(
   numbers: number[],
@@ -39,7 +37,11 @@ export function createNumberTiles(
     : createScatteredPositionMap(numbers, bounds)
 
   return numbers.map<NumberTileData>((value) => {
-    const position = positionsByValue.get(value) ?? createRandomPosition(bounds)
+    const position = positionsByValue.get(value)
+
+    if (!position) {
+      throw new Error(`Missing Number Search position for value ${value}`)
+    }
 
     return {
       id: `level-${level}-number-${value}`,
@@ -63,23 +65,13 @@ type PathStepResult = {
   angle: number
 }
 
+type DirectionCandidate = {
+  position: PlacementPosition
+  angle: number
+}
+
 type TurnConstraintMode = 'strict' | 'relaxed' | 'disabled'
 
-/**
- * สร้างตำแหน่งแบบ controlled path
- *
- * ตัวอย่าง:
- * numbers = [2, 4, 7, 9]
- * distances = [240, 180, 240, 200]
- *
- * ความหมาย:
- * center → 2 = 240px
- * 2 → 4 = 180px
- * 4 → 7 = 240px
- * 7 → 9 = 200px
- *
- * ทิศทางสุ่ม แต่ระยะยังคงตาม config
- */
 function createControlledPathPositions(
   numbers: number[],
   level: number,
@@ -114,10 +106,6 @@ function createControlledPathPositions(
       NUMBER_SEARCH_PATH_DISTANCE_CONFIG.fallbackDistanceStepPx
   }
 
-  /**
-   * ถ้า strict วางไม่ได้ ให้ผ่อนเงื่อนไขมุมเลี้ยวลง
-   * แต่ยังคงใช้ระยะจาก config เหมือนเดิม
-   */
   const relaxedResult = tryCreateRelaxedControlledPathPositions({
     numbers,
     level,
@@ -128,13 +116,6 @@ function createControlledPathPositions(
     return relaxedResult
   }
 
-  /**
-   * fallback สุดท้าย:
-   * ยังใช้ controlled path อยู่ แต่ปิดกฎมุมและลด min distance
-   * เพื่อรักษาระยะตาม config ให้ได้มากที่สุด
-   *
-   * จุดนี้จะไม่ใช้ scattered random เพราะจะทำให้ระยะไม่แฟร์
-   */
   const distanceOnlyResult = tryCreateControlledPathLayout({
     numbers,
     level,
@@ -147,13 +128,13 @@ function createControlledPathPositions(
     return distanceOnlyResult
   }
 
-  /**
-   * กรณีแย่ที่สุดจริง ๆ เช่น config ระยะใหญ่เกินขนาดสนาม
-   * ถึงจะ fallback เป็น scattered
-   *
-   * ถ้าเกิดเคสนี้บ่อย แปลว่าต้องลดระยะใน config
-   */
-  return createScatteredPositionMap(numbers, bounds)
+  if (NUMBER_SEARCH_PLACEMENT_FALLBACK_CONFIG.allowScatteredFallback) {
+    return createScatteredPositionMap(numbers, bounds)
+  }
+
+  throw new Error(
+    `Unable to create controlled Number Search layout for level ${level}`,
+  )
 }
 
 type TryCreateRelaxedControlledPathPositionsParams = {
@@ -167,9 +148,7 @@ function tryCreateRelaxedControlledPathPositions({
   level,
   bounds,
 }: TryCreateRelaxedControlledPathPositionsParams) {
-  const relaxedMinDistances = [100, 80, 60]
-
-  for (const minTileDistance of relaxedMinDistances) {
+  for (const minTileDistance of NUMBER_SEARCH_PLACEMENT_FALLBACK_CONFIG.relaxedMinDistancesPx) {
     for (
       let layoutAttempt = 0;
       layoutAttempt < NUMBER_SEARCH_PATH_DISTANCE_CONFIG.maxLayoutAttempts;
@@ -216,7 +195,6 @@ function tryCreateControlledPathLayout({
   })
 
   const centerPoint = createCenterPosition(bounds)
-
   let previousAngle: number | null = null
 
   for (let index = 0; index < numbers.length; index += 1) {
@@ -243,6 +221,18 @@ function tryCreateControlledPathLayout({
     previousAngle = nextStep.angle
   }
 
+  if (DEBUG_PLACEMENT_DISTANCE) {
+    debugPathDistances({
+      numbers,
+      positions,
+      distances,
+      bounds,
+      level,
+      mode: turnConstraintMode,
+      minTileDistance,
+    })
+  }
+
   return positionsByValue
 }
 
@@ -256,15 +246,6 @@ type CreateNextPathStepParams = {
   turnConstraintMode: TurnConstraintMode
 }
 
-/**
- * วางเลขตัวถัดไปจากตำแหน่งก่อนหน้า
- *
- * สูตร:
- * nextPosition = previousPosition + direction × pathDistance
- *
- * pathDistance มาจาก config ดังนั้นระยะจะเท่ากันตามที่กำหนด
- * direction เป็นมุมสุ่ม
- */
 function createNextPathStep({
   previousPosition,
   previousAngle,
@@ -274,7 +255,7 @@ function createNextPathStep({
   minTileDistance,
   turnConstraintMode,
 }: CreateNextPathStepParams): PathStepResult | null {
-  const randomResult = tryCreateRandomAngleStep({
+  const sectorResult = tryCreateSectorDirectionStep({
     previousPosition,
     previousAngle,
     existingPositions,
@@ -284,15 +265,11 @@ function createNextPathStep({
     turnConstraintMode,
   })
 
-  if (randomResult !== null) {
-    return randomResult
+  if (sectorResult !== null) {
+    return sectorResult
   }
 
-  /**
-   * ถ้าสุ่มมุมไม่สำเร็จ ให้ลองกวาดมุมรอบวงแบบเป็นระบบ
-   * วิธีนี้ช่วยลดโอกาส fallback และยังรักษาระยะ pathDistance ไว้
-   */
-  return tryCreateSweptAngleStep({
+  return tryCreateSweptDirectionStep({
     previousPosition,
     previousAngle,
     existingPositions,
@@ -303,7 +280,7 @@ function createNextPathStep({
   })
 }
 
-function tryCreateRandomAngleStep({
+function tryCreateSectorDirectionStep({
   previousPosition,
   previousAngle,
   existingPositions,
@@ -312,33 +289,23 @@ function tryCreateRandomAngleStep({
   minTileDistance,
   turnConstraintMode,
 }: CreateNextPathStepParams): PathStepResult | null {
-  for (
-    let attempt = 0;
-    attempt < NUMBER_SEARCH_PATH_DISTANCE_CONFIG.maxDirectionAttempts;
-    attempt += 1
-  ) {
-    const angle = Math.random() * Math.PI * 2
+  const candidates = createAvailableDirectionCandidates({
+    previousPosition,
+    bounds,
+    pathDistance,
+    directionCount: NUMBER_SEARCH_PATH_DISTANCE_CONFIG.directionSectorCount,
+  })
 
-    const result = createStepCandidate({
-      previousPosition,
-      previousAngle,
-      existingPositions,
-      bounds,
-      pathDistance,
-      minTileDistance,
-      turnConstraintMode,
-      angle,
-    })
-
-    if (result !== null) {
-      return result
-    }
-  }
-
-  return null
+  return chooseValidCandidate({
+    candidates,
+    previousAngle,
+    existingPositions,
+    minTileDistance,
+    turnConstraintMode,
+  })
 }
 
-function tryCreateSweptAngleStep({
+function tryCreateSweptDirectionStep({
   previousPosition,
   previousAngle,
   existingPositions,
@@ -347,86 +314,107 @@ function tryCreateSweptAngleStep({
   minTileDistance,
   turnConstraintMode,
 }: CreateNextPathStepParams): PathStepResult | null {
-  const sweepCount = 96
-  const offset = Math.random() * Math.PI * 2
+  const candidates = createAvailableDirectionCandidates({
+    previousPosition,
+    bounds,
+    pathDistance,
+    directionCount: NUMBER_SEARCH_PATH_DISTANCE_CONFIG.angleSweepCount,
+  })
 
-  for (let index = 0; index < sweepCount; index += 1) {
-    const angle = offset + (index / sweepCount) * Math.PI * 2
-
-    const result = createStepCandidate({
-      previousPosition,
-      previousAngle,
-      existingPositions,
-      bounds,
-      pathDistance,
-      minTileDistance,
-      turnConstraintMode,
-      angle,
-    })
-
-    if (result !== null) {
-      return result
-    }
-  }
-
-  return null
+  return chooseValidCandidate({
+    candidates,
+    previousAngle,
+    existingPositions,
+    minTileDistance,
+    turnConstraintMode,
+  })
 }
 
-type CreateStepCandidateParams = {
+type CreateAvailableDirectionCandidatesParams = {
   previousPosition: PlacementPosition
-  previousAngle: number | null
-  existingPositions: PlacementPosition[]
   bounds: NumberSearchBoardBounds
   pathDistance: number
-  minTileDistance: number
-  turnConstraintMode: TurnConstraintMode
-  angle: number
+  directionCount: number
 }
 
-function createStepCandidate({
+/**
+ * สร้างเฉพาะทิศที่อยู่ใน safe bounds
+ * เช่น ถ้าอยู่ชิดขอบขวา ทิศขวาจะไม่ผ่าน
+ */
+function createAvailableDirectionCandidates({
   previousPosition,
-  previousAngle,
-  existingPositions,
   bounds,
   pathDistance,
-  minTileDistance,
-  turnConstraintMode,
-  angle,
-}: CreateStepCandidateParams): PathStepResult | null {
-  if (
-    !isValidTurnAngle({
-      previousAngle,
-      nextAngle: angle,
-      mode: turnConstraintMode,
+  directionCount,
+}: CreateAvailableDirectionCandidatesParams): DirectionCandidate[] {
+  const safeBounds = createSafePlacementBounds(bounds)
+  const angleOffset = Math.random() * ((Math.PI * 2) / directionCount)
+
+  const candidates = Array.from({ length: directionCount }, (_, index) => {
+    const angle = angleOffset + (index / directionCount) * Math.PI * 2
+
+    const xPx = previousPosition.xPx + Math.cos(angle) * pathDistance
+    const yPx = previousPosition.yPx + Math.sin(angle) * pathDistance
+
+    const position = createPositionFromPx({
+      xPx,
+      yPx,
+      bounds,
     })
-  ) {
-    return null
-  }
 
-  const xPx = previousPosition.xPx + Math.cos(angle) * pathDistance
-  const yPx = previousPosition.yPx + Math.sin(angle) * pathDistance
-
-  const candidate = createPositionFromPx({
-    xPx,
-    yPx,
-    bounds,
+    return {
+      position,
+      angle,
+    }
   })
 
-  if (!isInsideSafeBounds(candidate, bounds)) {
-    return null
+  return shuffleArray(
+    candidates.filter(({ position }) =>
+      isInsideSafeBoundsWithSafeBounds(position, safeBounds),
+    ),
+  )
+}
+
+type ChooseValidCandidateParams = {
+  candidates: DirectionCandidate[]
+  previousAngle: number | null
+  existingPositions: PlacementPosition[]
+  minTileDistance: number
+  turnConstraintMode: TurnConstraintMode
+}
+
+function chooseValidCandidate({
+  candidates,
+  previousAngle,
+  existingPositions,
+  minTileDistance,
+  turnConstraintMode,
+}: ChooseValidCandidateParams): PathStepResult | null {
+  for (const candidate of candidates) {
+    if (
+      !isValidTurnAngle({
+        previousAngle,
+        nextAngle: candidate.angle,
+        mode: turnConstraintMode,
+      })
+    ) {
+      continue
+    }
+
+    if (
+      minTileDistance > 0 &&
+      !isFarEnoughFromAll(candidate.position, existingPositions, minTileDistance)
+    ) {
+      continue
+    }
+
+    return {
+      position: candidate.position,
+      angle: candidate.angle,
+    }
   }
 
-  if (
-    minTileDistance > 0 &&
-    !isFarEnoughFromAll(candidate, existingPositions, minTileDistance)
-  ) {
-    return null
-  }
-
-  return {
-    position: candidate,
-    angle,
-  }
+  return null
 }
 
 function isValidTurnAngle({
@@ -479,12 +467,15 @@ function getLevelPathDistances({
   const distances = [...configuredDistances]
 
   const fallbackBase =
-    distances.length > 0 ? distances[distances.length - 1] : 240
+    distances.length > 0
+      ? distances[distances.length - 1]
+      : NUMBER_SEARCH_PLACEMENT_FALLBACK_CONFIG.defaultPathDistancePx
 
   while (distances.length < count) {
     const nextDistance =
       fallbackBase +
-      (distances.length - configuredDistances.length + 1) * 20
+      (distances.length - configuredDistances.length + 1) *
+        NUMBER_SEARCH_PLACEMENT_FALLBACK_CONFIG.generatedPathDistanceStepPx
 
     distances.push(nextDistance)
   }
@@ -492,9 +483,6 @@ function getLevelPathDistances({
   return distances
 }
 
-/**
- * ใช้เฉพาะตอนปิด controlled path หรือกรณีสุดท้ายจริง ๆ
- */
 function createScatteredPositionMap(
   numbers: number[],
   bounds: NumberSearchBoardBounds,
@@ -592,7 +580,16 @@ function createPositionFromPx({
   }
 }
 
-function createSafePlacementBounds(bounds: NumberSearchBoardBounds) {
+type SafePlacementBounds = {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
+function createSafePlacementBounds(
+  bounds: NumberSearchBoardBounds,
+): SafePlacementBounds {
   const halfTileSize = TILE_SIZE / 2
 
   const minX = Math.max(TILE_PLACEMENT_MARGIN_X_PX, halfTileSize)
@@ -613,8 +610,16 @@ function isInsideSafeBounds(
   position: PlacementPosition,
   bounds: NumberSearchBoardBounds,
 ) {
-  const safeBounds = createSafePlacementBounds(bounds)
+  return isInsideSafeBoundsWithSafeBounds(
+    position,
+    createSafePlacementBounds(bounds),
+  )
+}
 
+function isInsideSafeBoundsWithSafeBounds(
+  position: PlacementPosition,
+  safeBounds: SafePlacementBounds,
+) {
   return (
     position.xPx >= safeBounds.minX &&
     position.xPx <= safeBounds.maxX &&
@@ -646,4 +651,72 @@ function randomBetween(min: number, max: number) {
   }
 
   return Math.random() * (max - min) + min
+}
+
+function shuffleArray<T>(items: T[]) {
+  const result = [...items]
+
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+
+    ;[result[index], result[swapIndex]] = [
+      result[swapIndex],
+      result[index],
+    ]
+  }
+
+  return result
+}
+
+/**
+ * Debug ระยะจริงเทียบกับ config
+ * ใช้ชั่วคราวเพื่อตรวจว่า plannedDistance กับ actualDistance ตรงกันไหม
+ */
+function debugPathDistances({
+  numbers,
+  positions,
+  distances,
+  bounds,
+  level,
+  mode,
+  minTileDistance,
+}: {
+  numbers: number[]
+  positions: PlacementPosition[]
+  distances: number[]
+  bounds: NumberSearchBoardBounds
+  level: number
+  mode: TurnConstraintMode
+  minTileDistance: number
+}) {
+  const center = {
+    xPx: bounds.width / 2,
+    yPx: bounds.height / 2,
+  }
+
+  console.group(
+    `Number Search Level ${level} placement | mode=${mode} | minDistance=${minTileDistance}`,
+  )
+
+  console.table(
+    positions.map((position, index) => {
+      const previous = index === 0 ? center : positions[index - 1]
+
+      const actualDistance = Math.hypot(
+        position.xPx - previous.xPx,
+        position.yPx - previous.yPx,
+      )
+
+      return {
+        order: index + 1,
+        value: numbers[index],
+        plannedDistance: distances[index],
+        actualDistance: Math.round(actualDistance),
+        xPx: Math.round(position.xPx),
+        yPx: Math.round(position.yPx),
+      }
+    }),
+  )
+
+  console.groupEnd()
 }
