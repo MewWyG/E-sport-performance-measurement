@@ -248,3 +248,22 @@ export function ContinuousTrackingIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+export function DecoyTargetIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
+        d="M7 7l10 10M17 7L7 17"
+      />
+    </svg>
+  )
+}
