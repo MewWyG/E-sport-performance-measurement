@@ -45,12 +45,28 @@ export type NumberSearchInputEvent = {
   expectedValue: number
   clickedValue: number
 
+  /**
+   * จำนวนครั้งที่กดผิดสะสมทั้งเกม ณ ตอนที่เกิด event นี้
+   */
   wrongClickCount: number
 
   xPercent: number
   yPercent: number
 
   gameTimeMs: number
+}
+
+export type NumberSearchLevelEvent = {
+  level: number
+  numberCount: number
+
+  startedAtMs: number
+  completedAtMs: number
+  durationMs: number
+
+  correctClicks: number
+  wrongClicks: number
+  averageFindTime: number
 }
 
 export type NumberSearchStats = {
@@ -65,4 +81,5 @@ export type NumberSearchStats = {
 
   targetEvents: NumberSearchTargetEvent[]
   inputEvents: NumberSearchInputEvent[]
+  levelEvents: NumberSearchLevelEvent[]
 }
