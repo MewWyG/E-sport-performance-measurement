@@ -90,7 +90,7 @@ export default function DualTaskGamePage() {
             onChange={setDifficultyMode}
           />
 
-          <section className="rounded-sp-card border border-sp-border bg-sp-glass p-4 backdrop-blur-xl md:p-5">
+          <section className="mx-auto max-w-[1040px] rounded-sp-card border border-sp-border bg-sp-glass p-3 backdrop-blur-xl md:p-4">
             <div className="relative overflow-hidden rounded-sp-card border border-sp-border bg-sp-bg-soft">
               <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 p-4 md:p-5">
                 <div className="flex flex-wrap gap-3">
@@ -131,14 +131,6 @@ export default function DualTaskGamePage() {
                 onPointerMove={updatePointer}
               />
 
-              {status === 'playing' ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-8 z-10 flex justify-center px-4">
-                  <div className="w-full max-w-md">
-                    <SequenceOverlay sequence={activeSequence} />
-                  </div>
-                </div>
-              ) : null}
-
               {status !== 'playing' ? (
                 <button
                   type="button"
@@ -158,16 +150,20 @@ export default function DualTaskGamePage() {
                       โหมดปัจจุบันคือ {selectedConfig.label}
                       {' '}คลิกในกรอบนี้เพื่อเริ่มทดสอบทันที
                       จากนั้นให้ใช้เมาส์ติดตามเป้าหมาย
-                      และกดปุ่มตามลำดับที่แสดงตรงกลางสนาม
-                    </p>
-
-                    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-sp-text-subtle">
-                      Movement schedule: {selectedConfig.movementScheduleVersion}
+                      และกดปุ่มตามลำดับที่แสดงด้านล่างสนาม
                     </p>
                   </div>
                 </button>
               ) : null}
             </div>
+
+            {status === 'playing' ? (
+              <div className="mt-2 flex justify-center">
+                <div className="w-full max-w-sm">
+                  <SequenceOverlay sequence={activeSequence} />
+                </div>
+              </div>
+            ) : null}
           </section>
         </section>
       </main>
@@ -193,20 +189,11 @@ function DifficultySelector({
   ) as Array<[DualTaskDifficulty, (typeof DUAL_TASK_DIFFICULTY_PRESETS)[DualTaskDifficulty]]>
 
   return (
-    <section className="mb-6 rounded-sp-card border border-sp-border bg-sp-glass p-5 backdrop-blur-xl">
+    <section className="mb-4 rounded-sp-card border border-sp-border bg-sp-glass p-3 backdrop-blur-xl">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-sp-secondary">
             Difficulty Mode
-          </p>
-
-          <h2 className="mt-2 text-2xl font-black text-sp-text">
-            เลือกระดับความยากก่อนเริ่มเกม
-          </h2>
-
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-sp-text-muted">
-            แต่ละโหมดใช้ movement schedule ต่างกัน โดยระบบจะค่อย ๆ เพิ่มขอบเขตการเคลื่อนที่
-            ความเร็ว และความถี่การเปลี่ยนทิศทางตามช่วงเวลา เพื่อให้ผู้เล่นเจอความยากที่มีกรอบมาตรฐานเดียวกัน
           </p>
         </div>
 
@@ -225,10 +212,6 @@ function DifficultySelector({
             label={config.label}
             isActive={value === mode}
             disabled={disabled}
-            targetRadius={config.targetRadius}
-            maxSpeed={config.targetMaxSpeed}
-            minSequenceLength={config.minSequenceLength}
-            maxSequenceLength={config.maxSequenceLength}
             onClick={() => onChange(mode)}
           />
         ))}
@@ -242,10 +225,6 @@ type DifficultyButtonProps = {
   label: string
   isActive: boolean
   disabled: boolean
-  targetRadius: number
-  maxSpeed: number
-  minSequenceLength: number
-  maxSequenceLength: number
   onClick: () => void
 }
 
@@ -254,10 +233,6 @@ function DifficultyButton({
   label,
   isActive,
   disabled,
-  targetRadius,
-  maxSpeed,
-  minSequenceLength,
-  maxSequenceLength,
   onClick,
 }: DifficultyButtonProps) {
   return (
@@ -294,36 +269,7 @@ function DifficultyButton({
           {isActive ? 'Selected' : 'Choose'}
         </span>
       </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <DifficultyStat label="Target" value={`${targetRadius}px`} />
-        <DifficultyStat label="Max Speed" value={`${maxSpeed}`} />
-        <DifficultyStat
-          label="Sequence"
-          value={`${minSequenceLength}-${maxSequenceLength}`}
-        />
-        <DifficultyStat label="Duration" value="60s" />
-      </div>
     </button>
-  )
-}
-
-type DifficultyStatProps = {
-  label: string
-  value: string
-}
-
-function DifficultyStat({ label, value }: DifficultyStatProps) {
-  return (
-    <div className="rounded-sp-lg border border-sp-border bg-sp-bg/45 px-3 py-2">
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sp-text-subtle">
-        {label}
-      </p>
-
-      <p className="mt-1 font-black text-sp-text">
-        {value}
-      </p>
-    </div>
   )
 }
 
