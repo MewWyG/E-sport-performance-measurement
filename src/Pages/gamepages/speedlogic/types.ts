@@ -37,6 +37,9 @@ export type AnswerRecord = {
   correctChoiceId: string
   isCorrect: boolean
 
+  questionScore: number
+  earnedScore: number
+
   responseTimeMs: number
   answeredAt: number
 }
@@ -77,6 +80,8 @@ export type QuestionTypeBreakdownItem = {
   correct: number
   accuracy: number
   avgResponseTimeMs: number
+  totalEarnedScore: number
+  avgEarnedScore: number
 }
 
 export type ScheduleStageBreakdownItem = {
@@ -88,6 +93,8 @@ export type ScheduleStageBreakdownItem = {
   correct: number
   accuracy: number
   avgResponseTimeMs: number
+  totalEarnedScore: number
+  avgEarnedScore: number
 }
 
 export type SpeedLogicResult = {
