@@ -1,3 +1,5 @@
+import { NUMBER_SEARCH_SCORE_CONFIG } from '../config'
+
 export function calculateAverageFindTime(
   totalFindTime: number,
   correctClicks: number,
@@ -11,15 +13,48 @@ export function calculateAverageFindTime(
 
 export function calculateScore({
   correctClicks,
-  levelReached,
+  completedLevels,
   wrongClicks,
+  averageFindTime,
 }: {
   correctClicks: number
-  levelReached: number
+  completedLevels: number
   wrongClicks: number
+  averageFindTime: number
 }) {
+  const baseScore =
+    correctClicks * NUMBER_SEARCH_SCORE_CONFIG.correctClickPoints +
+    completedLevels * NUMBER_SEARCH_SCORE_CONFIG.completedLevelBonus -
+    wrongClicks * NUMBER_SEARCH_SCORE_CONFIG.wrongClickPenalty
+
+  const timeBonus = calculateTimeBonus(averageFindTime)
+
   return Math.max(
-    correctClicks * 100 + levelReached * 500 - wrongClicks * 300,
-    0,
+    baseScore + timeBonus,
+    NUMBER_SEARCH_SCORE_CONFIG.minScore,
   )
+}
+
+function calculateTimeBonus(averageFindTime: number) {
+  if (!NUMBER_SEARCH_SCORE_CONFIG.enableTimeBonus) {
+    return 0
+  }
+
+  if (averageFindTime <= 0) {
+    return 0
+  }
+
+  const fasterByMs =
+    NUMBER_SEARCH_SCORE_CONFIG.targetAverageFindTimeMs - averageFindTime
+
+  if (fasterByMs <= 0) {
+    return 0
+  }
+
+  const bonusSteps = Math.floor(fasterByMs / 100)
+
+  const bonus =
+    bonusSteps * NUMBER_SEARCH_SCORE_CONFIG.timeBonusPer100MsFaster
+
+  return Math.min(bonus, NUMBER_SEARCH_SCORE_CONFIG.maxTimeBonus)
 }

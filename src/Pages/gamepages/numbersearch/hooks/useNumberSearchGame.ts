@@ -104,8 +104,10 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
   }
 
   function getBoardBounds() {
-    const width = areaRef.current?.clientWidth ?? BOARD_DEFAULT_WIDTH
-    const height = areaRef.current?.clientHeight ?? BOARD_DEFAULT_HEIGHT
+    const rect = areaRef.current?.getBoundingClientRect()
+
+    const width = rect?.width ?? BOARD_DEFAULT_WIDTH
+    const height = rect?.height ?? BOARD_DEFAULT_HEIGHT
 
     return {
       width: Math.max(width, BOARD_MIN_WIDTH),
@@ -380,12 +382,13 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
 
     setCorrectClicks(nextCorrectClicks)
     setClickedNumbers(nextClickedNumbers)
-    setAverageFindTime(
-      calculateAverageFindTime(
-        totalFindTimeRef.current,
-        nextCorrectClicks,
-      ),
+
+    const nextAverageFindTime = calculateAverageFindTime(
+      totalFindTimeRef.current,
+      nextCorrectClicks,
     )
+
+    setAverageFindTime(nextAverageFindTime)
 
     const nextTiles = tilesRef.current.map((tile) =>
       tile.value === value ? { ...tile, isCleared: true } : tile,
@@ -405,12 +408,12 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
       recordCompletedLevelEvent(now)
 
       if (currentLevel >= MAX_NUMBER_SEARCH_LEVEL) {
-        updateScore(MAX_NUMBER_SEARCH_LEVEL)
+        updateScore(nextCompletedLevels)
         finishGame(now)
         return
       }
 
-      updateScore(nextLevel)
+      updateScore(nextCompletedLevels)
       startLevel(nextLevel, now)
       return
     }
@@ -420,12 +423,18 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     updateScore()
   }
 
-  function updateScore(levelOverride = levelRef.current) {
+  function updateScore(completedLevelsOverride = completedLevelsRef.current) {
+    const currentAverageFindTime = calculateAverageFindTime(
+      totalFindTimeRef.current,
+      correctClicksRef.current,
+    )
+
     setScore(
       calculateScore({
         correctClicks: correctClicksRef.current,
-        levelReached: levelOverride,
+        completedLevels: completedLevelsOverride,
         wrongClicks: wrongClicksRef.current,
+        averageFindTime: currentAverageFindTime,
       }),
     )
   }

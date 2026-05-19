@@ -11,103 +11,54 @@ export const BOARD_DEFAULT_WIDTH = 900
 export const BOARD_MIN_HEIGHT = 520
 export const BOARD_DEFAULT_HEIGHT = 520
 
-/**
- * ระยะขอบของพื้นที่วางตัวเลข หน่วยเป็น px
- */
+// กันตัวเลขชิดขอบสนาม
 export const TILE_PLACEMENT_MARGIN_X_PX = 56
 export const TILE_PLACEMENT_MARGIN_Y_PX = 64
 
-/**
- * ระยะห่างขั้นต่ำระหว่างตัวเลขทุกตัว หน่วยเป็น px
- *
- * ค่านี้เป็นระยะระหว่างจุดศูนย์กลางของ tile
- * เพิ่มค่านี้เพื่อไม่ให้เลขดูติดกันหรือรวมกลุ่มเกินไป
- */
+// ระยะห่างขั้นต่ำระหว่างจุดศูนย์กลางของตัวเลข
 export const TILE_MIN_DISTANCE_PX = 150
-
-/**
- * ระยะห่างขั้นต่ำสำรอง หน่วยเป็น px
- *
- * ถ้าวางด้วย 150px ไม่ได้ ระบบจะค่อย ๆ ลดลง
- * แต่จะไม่ต่ำกว่าค่านี้
- */
 export const TILE_MIN_DISTANCE_FALLBACK_PX = 110
 
-/**
- * จำนวนครั้งสูงสุดที่ระบบจะลองสุ่มตำแหน่งหรือทิศทางใหม่
- */
+// จำนวนครั้งที่ลองสุ่มตำแหน่งใน scattered fallback
 export const TILE_PLACEMENT_MAX_ATTEMPTS = 160
 
 export type NumberSearchPathDistanceConfig = {
   enabled: boolean
   maxLayoutAttempts: number
-  maxDirectionAttempts: number
   fallbackDistanceStepPx: number
-
-  /**
-   * มุมเลี้ยวขั้นต่ำระหว่างเลขที่ต้องกดต่อกัน
-   *
-   * ใช้กันไม่ให้เลขเรียงเป็นเส้นตรงไปทางเดียวกันมากเกินไป
-   */
   minTurnAngleDeg: number
-
-  /**
-   * มุมเลี้ยวสูงสุด
-   *
-   * ใช้กันไม่ให้ย้อนกลับเกือบ 180 องศาบ่อยเกินไป
-   */
   maxTurnAngleDeg: number
-
-  /**
-   * ระยะของแต่ละ Level
-   *
-   * จำนวนค่าใน array ต้องเท่ากับจำนวนตัวเลขของ Level นั้น
-   *
-   * ตัวอย่าง Level 1:
-   * [240, 180, 240, 200, 260]
-   *
-   * หมายความว่า:
-   * center → number1 = 240px
-   * number1 → number2 = 180px
-   * number2 → number3 = 240px
-   * number3 → number4 = 200px
-   * number4 → number5 = 260px
-   */
+  directionSectorCount: number
+  angleSweepCount: number
   levelPathDistancesPx: Record<number, number[]>
 }
 
-/**
- * Config สำหรับ controlled path placement
- *
- * เป้าหมาย:
- * - ผู้เล่นทุกคนเจอชุดระยะเดียวกันในแต่ละ Level
- * - ทิศทางยังสุ่ม เพื่อให้ตำแหน่งไม่เหมือนกัน
- * - คุมมุมเลี้ยว เพื่อไม่ให้ตัวเลขเรียงเป็นเส้นตรง
- */
+// คุมระยะการวางตัวเลขตามลำดับการกด
 export const NUMBER_SEARCH_PATH_DISTANCE_CONFIG: NumberSearchPathDistanceConfig =
   {
     enabled: true,
 
     maxLayoutAttempts: 160,
-    maxDirectionAttempts: 96,
     fallbackDistanceStepPx: 4,
 
+    // กันไม่ให้ตัวเลขเรียงเป็นเส้นตรงเกินไป
     minTurnAngleDeg: 50,
     maxTurnAngleDeg: 170,
 
+    // จำนวนทิศที่ใช้ตรวจว่าไปทางไหนได้บ้าง
+    directionSectorCount: 16,
+
+    // ใช้กวาดมุมละเอียดขึ้น ถ้าวางด้วย directionSectorCount ไม่ได้
+    angleSweepCount: 96,
+
+    // ค่าแรก = center → เลขแรก, ค่าถัดไป = เลขก่อนหน้า → เลขถัดไป
     levelPathDistancesPx: {
       1: [240, 180, 240, 200, 260],
-
       2: [240, 180, 240, 200, 260, 220],
-
       3: [240, 180, 240, 200, 260, 220, 280],
-
       4: [240, 180, 240, 200, 260, 220, 280, 240],
-
       5: [240, 180, 240, 200, 260, 220, 280, 240, 300],
-
       6: [240, 180, 240, 200, 260, 220, 280, 240, 300, 260],
-
       7: [
         240,
         180,
@@ -121,7 +72,6 @@ export const NUMBER_SEARCH_PATH_DISTANCE_CONFIG: NumberSearchPathDistanceConfig 
         260,
         320,
       ],
-
       8: [
         240,
         180,
@@ -136,7 +86,6 @@ export const NUMBER_SEARCH_PATH_DISTANCE_CONFIG: NumberSearchPathDistanceConfig 
         320,
         280,
       ],
-
       9: [
         240,
         180,
@@ -152,7 +101,6 @@ export const NUMBER_SEARCH_PATH_DISTANCE_CONFIG: NumberSearchPathDistanceConfig 
         280,
         340,
       ],
-
       10: [
         240,
         180,
@@ -171,3 +119,41 @@ export const NUMBER_SEARCH_PATH_DISTANCE_CONFIG: NumberSearchPathDistanceConfig 
       ],
     },
   }
+
+export const NUMBER_SEARCH_PLACEMENT_FALLBACK_CONFIG = {
+  // ใช้ตอน strict layout วางไม่ได้
+  relaxedMinDistancesPx: [100, 80, 60],
+
+  // ใช้ตอน config ของ level ใส่ระยะไม่ครบ
+  defaultPathDistancePx: 240,
+  generatedPathDistanceStepPx: 20,
+
+  // false = ถ้าวาง controlled path ไม่ได้ จะ error เพื่อไม่ให้ระยะหลุด config
+  allowScatteredFallback: false,
+}
+
+export const NUMBER_SEARCH_SCORE_CONFIG = {
+  // คะแนนต่อเลขที่กดถูก
+  correctClickPoints: 100,
+
+  // โบนัสเมื่อผ่านแต่ละ Level แล้วเท่านั้น
+  completedLevelBonus: 500,
+
+  // คะแนนที่หักต่อการกดผิด 1 ครั้ง
+  wrongClickPenalty: 300,
+
+  // เปิด/ปิดโบนัสจากความเร็ว
+  enableTimeBonus: true,
+
+  // เวลาเฉลี่ยเป้าหมายต่อเลข
+  targetAverageFindTimeMs: 800,
+
+  // เร็วกว่าเป้าหมายทุก 100ms ได้โบนัสเท่านี้
+  timeBonusPer100MsFaster: 50,
+
+  // จำกัดโบนัสเวลาสูงสุด
+  maxTimeBonus: 2000,
+
+  // คะแนนต่ำสุด
+  minScore: 0,
+}
