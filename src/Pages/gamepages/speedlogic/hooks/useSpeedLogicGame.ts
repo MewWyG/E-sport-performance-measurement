@@ -18,6 +18,7 @@ import {
   calculateFastestResponse,
   calculatePercentage,
   calculateProcessingScore,
+  calculateQuestionScore,
   calculateSlowestResponse,
   calculateThroughput,
   isAnswerTooFast,
@@ -265,10 +266,7 @@ export function useSpeedLogicGame({
     const throughput = calculateThroughput(correctAnswers, config.durationMs)
 
     const score = calculateProcessingScore({
-      accuracy,
-      avgResponseTimeMs,
-      correctAnswers,
-      maxDifficulty: maxDifficultyRef.current,
+      answers,
     })
 
     return {
@@ -484,6 +482,14 @@ export function useSpeedLogicGame({
 
       const isCorrect = selectedChoiceId === question.correctChoiceId
 
+      const questionScore = calculateQuestionScore({
+        questionType: question.type,
+        difficulty: question.difficulty,
+        responseTimeMs,
+      })
+
+      const earnedScore = isCorrect ? questionScore : 0
+
       const record: AnswerRecord = {
         questionId: question.id,
         questionType: question.type,
@@ -493,6 +499,9 @@ export function useSpeedLogicGame({
         selectedChoiceId,
         correctChoiceId: question.correctChoiceId,
         isCorrect,
+
+        questionScore,
+        earnedScore,
 
         responseTimeMs: Number(responseTimeMs.toFixed(2)),
         answeredAt: now,

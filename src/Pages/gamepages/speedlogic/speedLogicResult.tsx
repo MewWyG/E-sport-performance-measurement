@@ -125,9 +125,9 @@ export default function SpeedLogicResultPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <MetricCard
-              label="Processing Score"
+              label="Weighted Score"
               value={`${result.score}`}
-              helper="คะแนนรวมจากความเร็ว ความถูกต้อง และระดับโจทย์"
+              helper="คะแนนรวมจากคำตอบที่ถูก โดยถ่วงน้ำหนักตาม difficulty และประเภทโจทย์"
             />
 
             <MetricCard
@@ -173,6 +173,7 @@ export default function SpeedLogicResultPage() {
 
               <div className="mt-5 space-y-4">
                 <ResultRow label="Total Answers" value={`${result.totalAnswers}`} />
+                <ResultRow label="Weighted Score" value={`${result.score}`} />
                 <ResultRow label="Correct Answers" value={`${result.correctAnswers}`} />
                 <ResultRow label="Wrong Answers" value={`${result.wrongAnswers}`} />
                 <ResultRow label="Fastest Response" value={`${result.fastestResponseMs} ms`} />
@@ -273,6 +274,7 @@ export default function SpeedLogicResultPage() {
                     <th className="py-3 pr-4 font-bold">Correct</th>
                     <th className="py-3 pr-4 font-bold">Accuracy</th>
                     <th className="py-3 pr-4 font-bold">Avg Response</th>
+                    <th className="py-3 pr-4 font-bold">Score</th>
                   </tr>
                 </thead>
 
@@ -309,6 +311,10 @@ export default function SpeedLogicResultPage() {
                       <td className="py-3 pr-4 text-sp-text-muted">
                         {stage.avgResponseTimeMs} ms
                       </td>
+
+                      <td className="py-3 pr-4 font-bold text-sp-text">
+                        {stage.totalEarnedScore}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -342,6 +348,10 @@ export default function SpeedLogicResultPage() {
                     <BreakdownRow
                       label="Avg Response"
                       value={`${data.avgResponseTimeMs} ms`}
+                    />
+                    <BreakdownRow
+                      label="Score"
+                      value={`${data.totalEarnedScore}`}
                     />
                   </div>
                 </div>

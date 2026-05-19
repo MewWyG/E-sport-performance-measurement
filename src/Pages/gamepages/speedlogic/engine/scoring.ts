@@ -1,6 +1,15 @@
-import type { AnswerRecord, SpeedLogicResult } from '../types'
+import type { AnswerRecord, QuestionType, SpeedLogicResult } from '../types'
 import { QUESTION_TYPES, SPEED_LOGIC_CONFIG } from '../constants'
 import type { QuestionScheduleStage, SpeedLogicConfig } from '../constants'
+
+const QUESTION_TYPE_WEIGHTS: Record<QuestionType, number> = {
+  addition: 1,
+  subtraction: 1.1,
+  multiplication: 1.4,
+  comparison: 1.1,
+  odd_even: 1,
+  true_false: 1.2,
+}
 
 export function calculatePercentage(part: number, total: number): number {
   if (total <= 0) return 0
@@ -22,27 +31,45 @@ export function calculateThroughput(
   return correctAnswers / durationSec
 }
 
+export function calculateTotalEarnedScore(answers: AnswerRecord[]): number {
+  return answers.reduce((sum, answer) => sum + answer.earnedScore, 0)
+}
+
+type QuestionScoreParams = {
+  questionType: QuestionType
+  difficulty: number
+  responseTimeMs: number
+}
+
+export function calculateQuestionScore({
+  questionType,
+  difficulty,
+  responseTimeMs,
+}: QuestionScoreParams): number {
+  const baseScore = 10
+  const typeWeight = QUESTION_TYPE_WEIGHTS[questionType]
+  const difficultyMultiplier = 1 + difficulty * 0.12
+
+  /**
+   * Speed bonus เป็น bonus เล็ก ๆ เพื่อให้ตอบเร็วได้คะแนนเพิ่ม
+   * แต่ไม่ให้ speed มีผลแรงเกิน accuracy/difficulty
+   */
+  const speedBonus = Math.max(0, 6 - responseTimeMs / 500)
+
+  const score =
+    baseScore * typeWeight * difficultyMultiplier + speedBonus
+
+  return Math.max(1, Number(score.toFixed(2)))
+}
+
 type ProcessingScoreParams = {
-  accuracy: number
-  avgResponseTimeMs: number
-  correctAnswers: number
-  maxDifficulty: number
+  answers: AnswerRecord[]
 }
 
 export function calculateProcessingScore({
-  accuracy,
-  avgResponseTimeMs,
-  correctAnswers,
-  maxDifficulty,
+  answers,
 }: ProcessingScoreParams): number {
-  const accuracyPart = accuracy * 4
-  const speedPart = Math.max(0, 250 - avgResponseTimeMs / 6)
-  const volumePart = correctAnswers * 8
-  const difficultyPart = maxDifficulty * 35
-
-  const score = accuracyPart + speedPart + volumePart + difficultyPart
-
-  return Math.max(0, Math.round(score))
+  return Math.round(calculateTotalEarnedScore(answers))
 }
 
 export function buildQuestionTypeBreakdown(
@@ -54,6 +81,8 @@ export function buildQuestionTypeBreakdown(
       correct: 0,
       accuracy: 0,
       avgResponseTimeMs: 0,
+      totalEarnedScore: 0,
+      avgEarnedScore: 0,
     }
 
     return acc
@@ -63,6 +92,8 @@ export function buildQuestionTypeBreakdown(
     const relatedAnswers = answers.filter((answer) => answer.questionType === type)
     const correctAnswers = relatedAnswers.filter((answer) => answer.isCorrect)
     const responseTimes = relatedAnswers.map((answer) => answer.responseTimeMs)
+    const earnedScores = relatedAnswers.map((answer) => answer.earnedScore)
+    const totalEarnedScore = calculateTotalEarnedScore(relatedAnswers)
 
     breakdown[type] = {
       total: relatedAnswers.length,
@@ -71,6 +102,8 @@ export function buildQuestionTypeBreakdown(
         calculatePercentage(correctAnswers.length, relatedAnswers.length).toFixed(2),
       ),
       avgResponseTimeMs: Number(calculateAverage(responseTimes).toFixed(2)),
+      totalEarnedScore: Number(totalEarnedScore.toFixed(2)),
+      avgEarnedScore: Number(calculateAverage(earnedScores).toFixed(2)),
     }
   }
 
@@ -91,6 +124,8 @@ export function buildScheduleStageBreakdown(
       correct: 0,
       accuracy: 0,
       avgResponseTimeMs: 0,
+      totalEarnedScore: 0,
+      avgEarnedScore: 0,
     }
 
     return acc
@@ -102,6 +137,8 @@ export function buildScheduleStageBreakdown(
     )
     const correctAnswers = relatedAnswers.filter((answer) => answer.isCorrect)
     const responseTimes = relatedAnswers.map((answer) => answer.responseTimeMs)
+    const earnedScores = relatedAnswers.map((answer) => answer.earnedScore)
+    const totalEarnedScore = calculateTotalEarnedScore(relatedAnswers)
 
     breakdown[stage.id] = {
       stageId: stage.id,
@@ -114,6 +151,8 @@ export function buildScheduleStageBreakdown(
         calculatePercentage(correctAnswers.length, relatedAnswers.length).toFixed(2),
       ),
       avgResponseTimeMs: Number(calculateAverage(responseTimes).toFixed(2)),
+      totalEarnedScore: Number(totalEarnedScore.toFixed(2)),
+      avgEarnedScore: Number(calculateAverage(earnedScores).toFixed(2)),
     }
   }
 
