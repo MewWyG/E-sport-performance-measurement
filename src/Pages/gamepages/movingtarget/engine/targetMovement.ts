@@ -1,6 +1,7 @@
 import {
   TARGET_MAX_MOVEMENT_STEP_PX,
   TARGET_MIN_DIRECTION_SPEED,
+  TARGET_MOVEMENT_MAX_GUARD_STEPS,
 } from '../config'
 import type { Bounds, MovingTarget } from '../types'
 import {
@@ -66,7 +67,10 @@ function moveTargetUntilDistanceComplete(
 
   let guard = 0
 
-  while (remainingFrameDistance > TARGET_MIN_DIRECTION_SPEED && guard < 128) {
+  while (
+    remainingFrameDistance > TARGET_MIN_DIRECTION_SPEED &&
+    guard < TARGET_MOVEMENT_MAX_GUARD_STEPS
+  ) {
     guard += 1
 
     if (remainingMoveDistance <= TARGET_MIN_DIRECTION_SPEED) {

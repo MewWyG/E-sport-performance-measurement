@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import {
+  MAX_FRAME_DELTA_MS,
   PLAY_AREA_DEFAULT_HEIGHT,
   PLAY_AREA_DEFAULT_WIDTH,
   PLAY_AREA_MIN_HEIGHT,
   PLAY_AREA_MIN_WIDTH,
+  RESULT_DECIMAL_PLACES,
   TOTAL_TARGETS,
 } from '../config'
 import {
@@ -101,7 +103,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
         setElapsedMs(now - startTime)
       }
 
-      const deltaMs = Math.min(now - lastFrameTime, 32)
+      const deltaMs = Math.min(now - lastFrameTime, MAX_FRAME_DELTA_MS)
       lastFrameTime = now
 
       const bounds = getPlayAreaBounds()
@@ -237,14 +239,16 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
 
     setTargets([])
 
-    setElapsedMs(
-      startTimeRef.current === null ? 0 : now - startTimeRef.current,
-    )
+    const startTime = startTimeRef.current
+
+    if (startTime !== null) {
+      setElapsedMs(now - startTime)
+    }
 
     setGameState('finished')
   }
 
-  function spawnTargets(now = performance.now()) {
+  function spawnTargets(now: number) {
     if (spawnIndexRef.current >= TOTAL_TARGETS) {
       finishGame(now)
       return
@@ -253,7 +257,6 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     const mode = selectedModeRef.current
     const bounds = getPlayAreaBounds()
     const difficulty = getDifficulty(spawnIndexRef.current, mode)
-
     const distancePlan = getDistancePlan(
       distanceScheduleRef.current,
       spawnIndexRef.current,
@@ -285,13 +288,17 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   }
 
   function addMiss() {
-    missesRef.current += 1
-    setMisses(missesRef.current)
+    const nextMisses = missesRef.current + 1
+
+    missesRef.current = nextMisses
+    setMisses(nextMisses)
   }
 
   function addWrongClick() {
-    wrongClicksRef.current += 1
-    setWrongClicks(wrongClicksRef.current)
+    const nextWrongClicks = wrongClicksRef.current + 1
+
+    wrongClicksRef.current = nextWrongClicks
+    setWrongClicks(nextWrongClicks)
   }
 
   function recordTargetEvent({
@@ -321,15 +328,20 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
       responseTimeMs: outcome === 'hit' ? responseTimeMs : null,
 
       movementStepDistance: target.movementStepDistance,
-      remainingMoveDistance: Number(target.remainingMoveDistance.toFixed(2)),
+      remainingMoveDistance: Number(
+        target.remainingMoveDistance.toFixed(RESULT_DECIMAL_PLACES),
+      ),
 
       plannedSpawnDistance: target.plannedSpawnDistance,
-      actualSpawnDistance: Number(target.actualSpawnDistance.toFixed(2)),
+      actualSpawnDistance: Number(
+        target.actualSpawnDistance.toFixed(RESULT_DECIMAL_PLACES),
+      ),
 
-      spawnX: Number(target.spawnX.toFixed(2)),
-      spawnY: Number(target.spawnY.toFixed(2)),
-      finalX: Number(target.x.toFixed(2)),
-      finalY: Number(target.y.toFixed(2)),
+      spawnX: Number(target.spawnX.toFixed(RESULT_DECIMAL_PLACES)),
+      spawnY: Number(target.spawnY.toFixed(RESULT_DECIMAL_PLACES)),
+
+      finalX: Number(target.x.toFixed(RESULT_DECIMAL_PLACES)),
+      finalY: Number(target.y.toFixed(RESULT_DECIMAL_PLACES)),
 
       targetSize: target.size,
       targetLifetime: target.lifetime,
@@ -374,13 +386,13 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     if (!target.isCorrect) {
       addWrongClick()
 
+      const correctTarget = targetsRef.current.find((item) => item.isCorrect)
+
       recordInputEvent({
         eventType: 'wrong_target_click',
         gameTimeMs: getGameTime(now),
-        targetNumber: target.targetNumber,
+        targetNumber: correctTarget?.targetNumber ?? null,
         targetId: target.id,
-        x: Number(target.x.toFixed(2)),
-        y: Number(target.y.toFixed(2)),
       })
 
       return
@@ -414,6 +426,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     gameState,
     selectedMode,
     targets,
+
     hits,
     misses,
     wrongClicks,
@@ -421,12 +434,13 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     elapsedMs,
     accuracy,
     averageResponseTime,
+
     targetEvents,
     inputEvents,
 
+    setSelectedMode,
     startGame,
     stopGame,
-    setSelectedMode,
     handleAreaClick,
     handleTargetClick,
   }
