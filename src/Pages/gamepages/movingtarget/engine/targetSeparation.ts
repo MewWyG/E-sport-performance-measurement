@@ -1,6 +1,10 @@
 import {
   TARGET_COLLISION_GAP,
   TARGET_COLLISION_RESOLVE_PASSES,
+  TARGET_SEPARATION_EPSILON,
+  TARGET_SEPARATION_FALLBACK_ANGLE_I_DEG,
+  TARGET_SEPARATION_FALLBACK_ANGLE_J_DEG,
+  TARGET_SEPARATION_MIN_SPEED,
 } from '../config'
 import type { Bounds, MovingTarget } from '../types'
 import {
@@ -41,7 +45,7 @@ function resolveOnePass(targets: MovingTarget[], bounds: Bounds) {
       }
 
       const direction = getSafeDirection(dx, dy, i, j)
-      const overlap = minDistance - Math.max(distance, 0.001)
+      const overlap = minDistance - Math.max(distance, TARGET_SEPARATION_EPSILON)
 
       if (first.isCorrect && !second.isCorrect) {
         nextTargets[j] = pushTargetAway({
@@ -113,7 +117,10 @@ function pushTargetAway({
   x = clamp(x, halfSize, bounds.width - halfSize)
   y = clamp(y, halfSize, bounds.height - halfSize)
 
-  const speed = Math.max(Math.hypot(target.vx, target.vy), 0.08)
+  const speed = Math.max(
+    Math.hypot(target.vx, target.vy),
+    TARGET_SEPARATION_MIN_SPEED,
+  )
 
   let vx = directionX * speed
   let vy = directionY * speed
@@ -146,14 +153,17 @@ function pushTargetAway({
 function getSafeDirection(dx: number, dy: number, i: number, j: number) {
   const distance = Math.hypot(dx, dy)
 
-  if (distance > 0.001) {
+  if (distance > TARGET_SEPARATION_EPSILON) {
     return {
       x: dx / distance,
       y: dy / distance,
     }
   }
 
-  const angle = ((i + 1) * 37 + (j + 1) * 53) * (Math.PI / 180)
+  const angle =
+    ((i + 1) * TARGET_SEPARATION_FALLBACK_ANGLE_I_DEG +
+      (j + 1) * TARGET_SEPARATION_FALLBACK_ANGLE_J_DEG) *
+    (Math.PI / 180)
 
   return {
     x: Math.cos(angle),
