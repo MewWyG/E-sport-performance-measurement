@@ -377,50 +377,52 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   }
 
   function handleTargetClick(target: MovingTarget) {
-    if (gameStateRef.current !== 'running') {
-      return
-    }
+  if (gameStateRef.current !== 'running') {
+    return
+  }
 
-    const now = performance.now()
+  const now = performance.now()
+  const activeTarget = targetsRef.current.find((item) => item.id === target.id)
 
-    if (!target.isCorrect) {
-      addWrongClick()
+  if (!activeTarget) {
+    return
+  }
 
-      const correctTarget = targetsRef.current.find((item) => item.isCorrect)
+  if (!activeTarget.isCorrect) {
+    addWrongClick()
 
-      recordInputEvent({
-        eventType: 'wrong_target_click',
-        gameTimeMs: getGameTime(now),
-        targetNumber: correctTarget?.targetNumber ?? null,
-        targetId: target.id,
-      })
+    const correctTarget = targetsRef.current.find((item) => item.isCorrect)
 
-      return
-    }
-
-    const latestTarget =
-      targetsRef.current.find((item) => item.id === target.id) ?? target
-
-    const nextHits = hitsRef.current + 1
-
-    hitsRef.current = nextHits
-    totalResponseTimeRef.current += now - latestTarget.bornAt
-
-    setHits(nextHits)
-
-    recordTargetEvent({
-      target: latestTarget,
-      now,
-      outcome: 'hit',
+    recordInputEvent({
+      eventType: 'wrong_target_click',
+      gameTimeMs: getGameTime(now),
+      targetNumber: correctTarget?.targetNumber ?? null,
+      targetId: activeTarget.id,
     })
 
-    if (spawnIndexRef.current >= TOTAL_TARGETS) {
-      finishGame(now)
-      return
-    }
-
-    spawnTargets(now)
+    return
   }
+
+  const nextHits = hitsRef.current + 1
+
+  hitsRef.current = nextHits
+  totalResponseTimeRef.current += now - activeTarget.bornAt
+
+  setHits(nextHits)
+
+  recordTargetEvent({
+    target: activeTarget,
+    now,
+    outcome: 'hit',
+  })
+
+  if (spawnIndexRef.current >= TOTAL_TARGETS) {
+    finishGame(now)
+    return
+  }
+
+  spawnTargets(now)
+}
 
   return {
     gameState,
