@@ -1,4 +1,8 @@
-import { TOTAL_TARGETS } from '../config'
+import {
+  MOVING_TARGET_GAME_ID,
+  RESULT_PAYLOAD_SCHEMA_VERSION,
+  TOTAL_TARGETS,
+} from '../config'
 import type { MovingTargetStats } from '../types'
 import type { GameResultPayload } from '../../../../types/gameResult'
 
@@ -16,7 +20,7 @@ export function buildMovingTargetResultPayload({
   return {
     session_id: sessionId,
     player_id: playerId,
-    game_id: 'moving-target',
+    game_id: MOVING_TARGET_GAME_ID,
 
     // ตอนนี้ใช้ accuracy เป็น score หลักของ Moving Target
     score: stats.accuracy,
@@ -26,7 +30,7 @@ export function buildMovingTargetResultPayload({
     duration_ms: Math.round(stats.elapsedMs),
 
     raw_data_json: {
-      schemaVersion: 1,
+      schemaVersion: RESULT_PAYLOAD_SCHEMA_VERSION,
 
       gameMode: stats.mode,
       totalTargets: TOTAL_TARGETS,
