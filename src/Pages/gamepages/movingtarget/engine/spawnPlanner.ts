@@ -1,7 +1,12 @@
 import {
   DECOY_MIN_DISTANCE,
+  DECOY_DISTANCE_STEP,
+  FALLBACK_TO_CENTER_DISTANCE_RATIO,
+  SPAWN_BALANCE_X_WEIGHT,
+  SPAWN_BALANCE_Y_WEIGHT,
   SPAWN_DISTANCE_TOLERANCE_RATIO,
   SPAWN_MARGIN,
+  SPAWN_TOP_CANDIDATE_COUNT,
 } from '../config'
 import type { Bounds, Point } from '../types'
 import {
@@ -89,41 +94,6 @@ export function createSpawnPoint({
   }
 }
 
-export function createInitialSpawnPoint(
-  bounds: Bounds,
-  targetSize: number,
-): SpawnPointResult {
-  const halfSize = targetSize / 2
-  const center = getCenterPoint(bounds)
-
-  const centerAreaWidth = bounds.width * 0.34
-  const centerAreaHeight = bounds.height * 0.34
-
-  const minX = center.x - centerAreaWidth / 2
-  const maxX = center.x + centerAreaWidth / 2
-  const minY = center.y - centerAreaHeight / 2
-  const maxY = center.y + centerAreaHeight / 2
-
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    const point = {
-      x: randomBetween(minX, maxX),
-      y: randomBetween(minY, maxY),
-    }
-
-    if (isPointValid(point, bounds, halfSize)) {
-      return {
-        point,
-        actualDistance: 0,
-      }
-    }
-  }
-
-  return {
-    point: clampPoint(center, bounds, halfSize),
-    actualDistance: 0,
-  }
-}
-
 export function createDecoyPoint({
   correctPoint,
   bounds,
@@ -131,7 +101,7 @@ export function createDecoyPoint({
   decoyIndex,
 }: CreateDecoyPointParams): Point {
   const halfSize = targetSize / 2
-  const decoyDistance = DECOY_MIN_DISTANCE + decoyIndex * 44
+  const decoyDistance = DECOY_MIN_DISTANCE + decoyIndex * DECOY_DISTANCE_STEP
 
   const validCandidates = getValidCandidates({
     origin: correctPoint,
@@ -195,7 +165,10 @@ function pickBalancedCandidate(points: Point[], bounds: Bounds): Point {
     }))
     .sort((a, b) => a.score - b.score)
 
-  const topCandidateCount = Math.min(scoredCandidates.length, 3)
+  const topCandidateCount = Math.min(
+    scoredCandidates.length,
+    SPAWN_TOP_CANDIDATE_COUNT,
+  )
   const topCandidates = scoredCandidates.slice(0, topCandidateCount)
 
   return pickRandom(topCandidates).point
@@ -209,7 +182,11 @@ function getCandidateBalanceScore(point: Point, bounds: Bounds) {
 
   const edgePenalty = getEdgePenalty(point, bounds)
 
-  return normalizedXDistance * 1.2 + normalizedYDistance * 0.8 + edgePenalty
+  return (
+    normalizedXDistance * SPAWN_BALANCE_X_WEIGHT +
+    normalizedYDistance * SPAWN_BALANCE_Y_WEIGHT +
+    edgePenalty
+  )
 }
 
 function getEdgePenalty(point: Point, bounds: Bounds) {
@@ -253,7 +230,10 @@ function createFallbackPoint({
     dy: dy / distanceToCenter,
   }
 
-  const safeDistance = Math.min(preferredDistance, distanceToCenter * 0.85)
+  const safeDistance = Math.min(
+    preferredDistance,
+    distanceToCenter * FALLBACK_TO_CENTER_DISTANCE_RATIO,
+  )
 
   const point = {
     x: origin.x + direction.dx * safeDistance,
@@ -266,12 +246,13 @@ function createFallbackPoint({
 function isPointValid(point: Point, bounds: Bounds, radius: number) {
   const safeMargin = Math.max(radius, SPAWN_MARGIN)
 
-  if (
-    point.x < safeMargin ||
-    point.x > bounds.width - safeMargin ||
-    point.y < safeMargin ||
-    point.y > bounds.height - safeMargin
-  ) {
+  const isInsideBounds =
+    point.x >= safeMargin &&
+    point.x <= bounds.width - safeMargin &&
+    point.y >= safeMargin &&
+    point.y <= bounds.height - safeMargin
+
+  if (!isInsideBounds) {
     return false
   }
 
@@ -288,10 +269,76 @@ function isPointValid(point: Point, bounds: Bounds, radius: number) {
 function clampPoint(point: Point, bounds: Bounds, radius: number): Point {
   const safeMargin = Math.max(radius, SPAWN_MARGIN)
 
-  return {
+  const clampedPoint = {
     x: clamp(point.x, safeMargin, bounds.width - safeMargin),
     y: clamp(point.y, safeMargin, bounds.height - safeMargin),
   }
+
+  const stopButtonSafeRect = getStopButtonSafeRect(bounds)
+
+  if (
+    !isCircleOverlappingRect(
+      clampedPoint.x,
+      clampedPoint.y,
+      radius,
+      stopButtonSafeRect,
+    )
+  ) {
+    return clampedPoint
+  }
+
+  return getNearestSafePointAwayFromRect(clampedPoint, bounds, radius)
+}
+
+function getNearestSafePointAwayFromRect(
+  point: Point,
+  bounds: Bounds,
+  radius: number,
+): Point {
+  const stopButtonSafeRect = getStopButtonSafeRect(bounds)
+  const safeMargin = Math.max(radius, SPAWN_MARGIN)
+
+  const candidates: Point[] = [
+    {
+      x: stopButtonSafeRect.x - radius - SPAWN_MARGIN,
+      y: point.y,
+    },
+    {
+      x: stopButtonSafeRect.x + stopButtonSafeRect.width + radius + SPAWN_MARGIN,
+      y: point.y,
+    },
+    {
+      x: point.x,
+      y: stopButtonSafeRect.y + stopButtonSafeRect.height + radius + SPAWN_MARGIN,
+    },
+  ].map((candidate) => ({
+    x: clamp(candidate.x, safeMargin, bounds.width - safeMargin),
+    y: clamp(candidate.y, safeMargin, bounds.height - safeMargin),
+  }))
+
+  const safeCandidates = candidates.filter(
+    (candidate) =>
+      !isCircleOverlappingRect(
+        candidate.x,
+        candidate.y,
+        radius,
+        stopButtonSafeRect,
+      ),
+  )
+
+  if (safeCandidates.length === 0) {
+    return {
+      x: bounds.width / 2,
+      y: bounds.height / 2,
+    }
+  }
+
+  return safeCandidates
+    .map((candidate) => ({
+      point: candidate,
+      distance: getDistance(point, candidate),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0].point
 }
 
 function normalizeDirection(direction: Direction): Direction {
@@ -311,36 +358,28 @@ function getCenterPoint(bounds: Bounds): Point {
   }
 }
 
-function getDistance(a: Point, b: Point) {
-  return Math.hypot(a.x - b.x, a.y - b.y)
+function getDistance(first: Point, second: Point) {
+  return Math.hypot(first.x - second.x, first.y - second.y)
 }
 
-function pickRandom<T>(items: T[]) {
+function pickRandom<T>(items: T[]): T {
   const index = Math.floor(Math.random() * items.length)
 
   return items[index]
 }
 
-function shuffleArray<T>(items: T[]) {
+function shuffleArray<T>(items: T[]): T[] {
   const result = [...items]
 
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const randomIndex = Math.floor(Math.random() * (i + 1))
-    const temp = result[i]
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1))
+    const temp = result[index]
 
-    result[i] = result[randomIndex]
+    result[index] = result[randomIndex]
     result[randomIndex] = temp
   }
 
   return result
-}
-
-function randomBetween(min: number, max: number) {
-  if (max <= min) {
-    return min
-  }
-
-  return Math.random() * (max - min) + min
 }
 
 function clamp(value: number, min: number, max: number) {
