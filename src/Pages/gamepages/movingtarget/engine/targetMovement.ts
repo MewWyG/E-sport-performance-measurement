@@ -1,12 +1,13 @@
+import {
+  TARGET_MAX_MOVEMENT_STEP_PX,
+  TARGET_MIN_DIRECTION_SPEED,
+} from '../config'
 import type { Bounds, MovingTarget } from '../types'
 import {
   getStopButtonSafeRect,
   resolveCircleRectCollision,
 } from './playAreaObstacles'
 import { separateOverlappingTargets } from './targetSeparation'
-
-const MAX_MOVEMENT_STEP = 4
-const MIN_DIRECTION_SPEED = 0.001
 
 export function updateTargets(
   targets: MovingTarget[],
@@ -34,7 +35,10 @@ function moveTargetUntilDistanceComplete(
   bounds: Bounds,
   stopButtonSafeRect: ReturnType<typeof getStopButtonSafeRect>,
 ): MovingTarget {
-  if (target.hasCompletedMovement || target.remainingMoveDistance <= 0.001) {
+  if (
+    target.hasCompletedMovement ||
+    target.remainingMoveDistance <= TARGET_MIN_DIRECTION_SPEED
+  ) {
     return {
       ...target,
       vx: 0,
@@ -44,7 +48,10 @@ function moveTargetUntilDistanceComplete(
     }
   }
 
-  const speed = Math.max(Math.hypot(target.vx, target.vy), MIN_DIRECTION_SPEED)
+  const speed = Math.max(
+    Math.hypot(target.vx, target.vy),
+    TARGET_MIN_DIRECTION_SPEED,
+  )
 
   let directionX = target.vx / speed
   let directionY = target.vy / speed
@@ -59,10 +66,10 @@ function moveTargetUntilDistanceComplete(
 
   let guard = 0
 
-  while (remainingFrameDistance > 0.001 && guard < 128) {
+  while (remainingFrameDistance > TARGET_MIN_DIRECTION_SPEED && guard < 128) {
     guard += 1
 
-    if (remainingMoveDistance <= 0.001) {
+    if (remainingMoveDistance <= TARGET_MIN_DIRECTION_SPEED) {
       remainingMoveDistance = 0
       break
     }
@@ -70,7 +77,7 @@ function moveTargetUntilDistanceComplete(
     const stepDistance = Math.min(
       remainingFrameDistance,
       remainingMoveDistance,
-      MAX_MOVEMENT_STEP,
+      TARGET_MAX_MOVEMENT_STEP_PX,
     )
 
     x += directionX * stepDistance
@@ -104,7 +111,7 @@ function moveTargetUntilDistanceComplete(
 
     const rectSpeed = Math.max(
       Math.hypot(rectResolved.vx, rectResolved.vy),
-      MIN_DIRECTION_SPEED,
+      TARGET_MIN_DIRECTION_SPEED,
     )
 
     directionX = rectResolved.vx / rectSpeed
@@ -114,7 +121,7 @@ function moveTargetUntilDistanceComplete(
     remainingMoveDistance -= stepDistance
   }
 
-  if (remainingMoveDistance <= 0.001) {
+  if (remainingMoveDistance <= TARGET_MIN_DIRECTION_SPEED) {
     return {
       ...target,
       x,
@@ -176,7 +183,7 @@ function resolveBoundaryCollision({
 
   const directionLength = Math.max(
     Math.hypot(directionX, directionY),
-    MIN_DIRECTION_SPEED,
+    TARGET_MIN_DIRECTION_SPEED,
   )
 
   return {

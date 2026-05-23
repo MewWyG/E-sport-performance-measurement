@@ -1,4 +1,9 @@
-import { GAME_MODE_CONFIG, MIN_TARGET_SIZE } from '../config'
+import {
+  GAME_MODE_CONFIG,
+  MIN_TARGET_SIZE,
+  TARGET_SAFETY_LIFETIME_EXTRA_MS,
+  TARGET_SAFETY_LIFETIME_MULTIPLIER,
+} from '../config'
 import type { Difficulty, GameMode } from '../types'
 
 export function getDifficulty(
@@ -10,13 +15,16 @@ export function getDifficulty(
   return {
     size: Math.max(modeConfig.targetSize, MIN_TARGET_SIZE),
 
-    // ความเร็วจริงคำนวณใน targetFactory จาก movementStepDistance / moveDurationMs
+    // ความเร็วจริงคำนวณจาก movementStepDistance / moveDurationMs
     speed: 0,
 
     moveDurationMs: modeConfig.targetMoveDurationMs,
 
     // safety timeout เท่านั้น ไม่ใช่อายุหลักของเป้า
-    lifetime: Math.round(modeConfig.targetMoveDurationMs * 2 + 1000),
+    lifetime: Math.round(
+      modeConfig.targetMoveDurationMs * TARGET_SAFETY_LIFETIME_MULTIPLIER +
+        TARGET_SAFETY_LIFETIME_EXTRA_MS,
+    ),
 
     decoyCount: modeConfig.decoyCount,
     pattern: 'controlled',

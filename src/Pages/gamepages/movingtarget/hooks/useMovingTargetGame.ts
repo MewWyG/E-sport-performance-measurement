@@ -54,10 +54,6 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const startTimeRef = useRef<number | null>(null)
   const spawnIndexRef = useRef(0)
 
-  /**
-   * เก็บจุดเกิดของเป้าจริงตัวก่อนหน้า
-   * ใช้เป็นฐานคำนวณตำแหน่งเกิดของเป้าถัดไป
-   */
   const previousTargetPointRef = useRef<Point | null>(null)
 
   const targetEventsRef = useRef<MovingTargetEvent[]>([])
@@ -173,8 +169,10 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   }
 
   function getPlayAreaBounds(): Bounds {
-    const width = areaRef.current?.clientWidth ?? PLAY_AREA_DEFAULT_WIDTH
-    const height = areaRef.current?.clientHeight ?? PLAY_AREA_DEFAULT_HEIGHT
+    const rect = areaRef.current?.getBoundingClientRect()
+
+    const width = rect?.width ?? PLAY_AREA_DEFAULT_WIDTH
+    const height = rect?.height ?? PLAY_AREA_DEFAULT_HEIGHT
 
     return {
       width: Math.max(width, PLAY_AREA_MIN_WIDTH),
@@ -230,10 +228,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   }
 
   function stopGame() {
-    resetStats()
-
-    gameStateRef.current = 'ready'
-    setGameState('ready')
+    finishGame()
   }
 
   function finishGame(now = performance.now()) {

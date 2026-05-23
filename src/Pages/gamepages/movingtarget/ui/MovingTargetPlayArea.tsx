@@ -42,20 +42,20 @@ export function MovingTargetPlayArea({
     <div
       ref={areaRef}
       onClick={() => {
-        if (gameState !== 'running') {
-          return
+        if (gameState === 'running') {
+          onAreaClick()
         }
-
-        onAreaClick()
       }}
-      className="sp-game-grid-bg relative flex min-h-[520px] cursor-crosshair select-none items-center justify-center overflow-hidden rounded-sp-card border-2 border-sp-border p-8 text-center shadow-2xl"
+      className="sp-game-grid-bg relative min-h-[520px] cursor-crosshair select-none overflow-hidden rounded-sp-card border-2 border-sp-border shadow-2xl"
     >
       {gameState === 'ready' && (
-        <MovingTargetReadyState
-          selectedMode={selectedMode}
-          onModeChange={onModeChange}
-          onStart={onStart}
-        />
+        <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
+          <MovingTargetReadyState
+            selectedMode={selectedMode}
+            onModeChange={onModeChange}
+            onStart={onStart}
+          />
+        </div>
       )}
 
       {gameState === 'running' && (
@@ -68,7 +68,7 @@ export function MovingTargetPlayArea({
             }}
             className="absolute right-4 top-4 z-30 rounded-sp-pill border border-sp-border bg-sp-surface/80 px-4 py-2 text-sm font-bold text-sp-text-muted backdrop-blur-xl transition-colors hover:border-sp-danger hover:text-sp-danger"
           >
-            หยุดเกม
+            จบเกม
           </button>
 
           {targets.map((target) => (
@@ -82,11 +82,13 @@ export function MovingTargetPlayArea({
       )}
 
       {gameState === 'finished' && (
-        <MovingTargetResultState
-          stats={stats}
-          onRetry={onRetry}
-          onBack={onBack}
-        />
+        <div className="absolute inset-0 flex items-center justify-center overflow-y-auto p-8 text-center">
+          <MovingTargetResultState
+            stats={stats}
+            onRetry={onRetry}
+            onBack={onBack}
+          />
+        </div>
       )}
     </div>
   )

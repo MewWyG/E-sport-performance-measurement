@@ -1,4 +1,5 @@
 import {
+  NUMBER_SEARCH_DEBUG_CONFIG,
   NUMBER_SEARCH_PATH_DISTANCE_CONFIG,
   NUMBER_SEARCH_PLACEMENT_FALLBACK_CONFIG,
   TILE_MIN_DISTANCE_FALLBACK_PX,
@@ -15,18 +16,6 @@ export type NumberSearchBoardBounds = {
   height: number
 }
 
-/**
- * เปิด debug เพื่อเช็กว่า actual distance ตรงกับ config หรือไม่
- * ก่อน commit จริงควรเปลี่ยนเป็น false
- */
-const DEBUG_PLACEMENT_DISTANCE = true
-
-/**
- * วางตัวเลขบนสนาม
- * - ระยะมาจาก config
- * - ทิศทางสุ่มจากทิศที่วางได้จริง
- * - ถ้า controlled path เปิดอยู่ จะไม่สุ่มตำแหน่งมั่วแทน
- */
 export function createNumberTiles(
   numbers: number[],
   level: number,
@@ -221,7 +210,7 @@ function tryCreateControlledPathLayout({
     previousAngle = nextStep.angle
   }
 
-  if (DEBUG_PLACEMENT_DISTANCE) {
+  if (NUMBER_SEARCH_DEBUG_CONFIG.enablePlacementDistanceLog) {
     debugPathDistances({
       numbers,
       positions,
@@ -337,10 +326,6 @@ type CreateAvailableDirectionCandidatesParams = {
   directionCount: number
 }
 
-/**
- * สร้างเฉพาะทิศที่อยู่ใน safe bounds
- * เช่น ถ้าอยู่ชิดขอบขวา ทิศขวาจะไม่ผ่าน
- */
 function createAvailableDirectionCandidates({
   previousPosition,
   bounds,
@@ -433,7 +418,10 @@ function isValidTurnAngle({
   const angleDiff = getAngleDifferenceDeg(previousAngle, nextAngle)
 
   if (mode === 'relaxed') {
-    return angleDiff >= 30 && angleDiff <= 175
+    return (
+      angleDiff >= NUMBER_SEARCH_PATH_DISTANCE_CONFIG.relaxedMinTurnAngleDeg &&
+      angleDiff <= NUMBER_SEARCH_PATH_DISTANCE_CONFIG.relaxedMaxTurnAngleDeg
+    )
   }
 
   return (
@@ -606,16 +594,6 @@ function createSafePlacementBounds(
   }
 }
 
-function isInsideSafeBounds(
-  position: PlacementPosition,
-  bounds: NumberSearchBoardBounds,
-) {
-  return isInsideSafeBoundsWithSafeBounds(
-    position,
-    createSafePlacementBounds(bounds),
-  )
-}
-
 function isInsideSafeBoundsWithSafeBounds(
   position: PlacementPosition,
   safeBounds: SafePlacementBounds,
@@ -668,10 +646,6 @@ function shuffleArray<T>(items: T[]) {
   return result
 }
 
-/**
- * Debug ระยะจริงเทียบกับ config
- * ใช้ชั่วคราวเพื่อตรวจว่า plannedDistance กับ actualDistance ตรงกันไหม
- */
 function debugPathDistances({
   numbers,
   positions,

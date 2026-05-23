@@ -22,6 +22,14 @@ export const STOP_BUTTON_SAFE_AREA_HEIGHT = 72
 export const TARGET_COLLISION_GAP = 10
 export const TARGET_COLLISION_RESOLVE_PASSES = 3
 
+export const TARGET_MAX_MOVEMENT_STEP_PX = 4
+export const TARGET_MIN_DIRECTION_SPEED = 0.001
+
+export const TARGET_SEPARATION_MIN_SPEED = 0.08
+export const TARGET_SEPARATION_EPSILON = 0.001
+export const TARGET_SEPARATION_FALLBACK_ANGLE_I_DEG = 37
+export const TARGET_SEPARATION_FALLBACK_ANGLE_J_DEG = 53
+
 export const DISTANCE_VALUE_STEP = 5
 
 export const MOVEMENT_STEP_DISTANCE_STAGE_START = 20
@@ -31,14 +39,20 @@ export const SPAWN_DISTANCE_TOLERANCE_RATIO = 0.15
 
 export const MIN_TARGET_SIZE = 28
 
+export const DECOY_SIZE_RATIO = 0.9
+export const DECOY_MIN_SIZE = 28
+export const DECOY_MOVE_DURATION_MULTIPLIER = 1.1
+export const DECOY_SPEED_MULTIPLIER = 0.85
+export const CORRECT_TARGET_SPEED_MULTIPLIER = 1
+
+export const TARGET_SAFETY_LIFETIME_MULTIPLIER = 2
+export const TARGET_SAFETY_LIFETIME_EXTRA_MS = 1000
+
 export type GameModeConfig = {
   label: string
   targetSize: number
 
-  /**
-   * เป้าจะใช้เวลาประมาณเท่านี้ในการเคลื่อนที่ครบ movementStepDistance
-   * ค่าน้อย = เป้าเร็วขึ้น
-   */
+  // เวลาที่เป้าใช้เคลื่อนที่ครบ movementStepDistance
   targetMoveDurationMs: number
 
   distanceMultiplier: number
