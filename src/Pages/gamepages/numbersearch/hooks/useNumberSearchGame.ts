@@ -6,6 +6,8 @@ import {
   BOARD_MIN_HEIGHT,
   BOARD_MIN_WIDTH,
   MAX_NUMBER_SEARCH_LEVEL,
+  NUMBER_SEARCH_RESULT_DECIMAL_PLACES,
+  NUMBER_SEARCH_TIMER_INTERVAL_MS,
 } from '../config'
 import { getLevelConfig } from '../engine/difficulty'
 import { createNumberSet } from '../engine/numberFactory'
@@ -88,7 +90,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
       }
 
       setElapsedMs(performance.now() - startTimeRef.current)
-    }, 100)
+    }, NUMBER_SEARCH_TIMER_INTERVAL_MS)
 
     return () => {
       if (intervalRef.current !== null) {
@@ -253,8 +255,16 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
       clickedNumbersAfter,
       remainingNumbers,
 
-      xPercent: Number((tile?.xPercent ?? 0).toFixed(2)),
-      yPercent: Number((tile?.yPercent ?? 0).toFixed(2)),
+      xPercent: Number(
+        (tile?.xPercent ?? 0).toFixed(
+          NUMBER_SEARCH_RESULT_DECIMAL_PLACES,
+        ),
+      ),
+      yPercent: Number(
+        (tile?.yPercent ?? 0).toFixed(
+          NUMBER_SEARCH_RESULT_DECIMAL_PLACES,
+        ),
+      ),
 
       targetStartedAtMs: getGameTime(targetStartedAt),
       completedAtMs: getGameTime(now),
@@ -288,8 +298,16 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
 
       wrongClickCount,
 
-      xPercent: Number((tile?.xPercent ?? 0).toFixed(2)),
-      yPercent: Number((tile?.yPercent ?? 0).toFixed(2)),
+      xPercent: Number(
+        (tile?.xPercent ?? 0).toFixed(
+          NUMBER_SEARCH_RESULT_DECIMAL_PLACES,
+        ),
+      ),
+      yPercent: Number(
+        (tile?.yPercent ?? 0).toFixed(
+          NUMBER_SEARCH_RESULT_DECIMAL_PLACES,
+        ),
+      ),
 
       gameTimeMs: getGameTime(now),
     }
@@ -335,7 +353,18 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
       return
     }
 
+    const clickedTile = tilesRef.current.find((tile) => tile.value === value)
+
+    if (!clickedTile || clickedTile.isCleared) {
+      return
+    }
+
     const expectedValue = answerSequenceRef.current[currentIndexRef.current]
+
+    if (expectedValue === undefined) {
+      return
+    }
+
     const now = performance.now()
 
     if (value !== expectedValue) {
