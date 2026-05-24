@@ -6,6 +6,7 @@ import {
 } from '../config'
 import type { Bounds } from '../types'
 
+// รูปทรงของพื้นที่ต้องห้ามในสนามเล่น เช่น พื้นที่ปุ่มหยุดเกม
 export type ObstacleRect = {
   x: number
   y: number
@@ -22,6 +23,7 @@ type ResolveCircleRectCollisionParams = {
   rect: ObstacleRect
 }
 
+// คืนพิกัดพื้นที่ปลอดภัยรอบปุ่มหยุดเกม เพื่อให้เป้าไม่เกิดหรือเคลื่อนที่ทับปุ่ม
 export function getStopButtonSafeRect(bounds: Bounds): ObstacleRect {
   return {
     x: Math.max(
@@ -49,6 +51,7 @@ export function isCircleOverlappingRect(
   return dx * dx + dy * dy < radius * radius
 }
 
+// ตรวจสอบและแก้ collision ระหว่างวงกลมเป้าและสี่เหลี่ยมพื้นที่ป้องกัน
 export function resolveCircleRectCollision({
   x,
   y,

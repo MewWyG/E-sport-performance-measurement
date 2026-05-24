@@ -9,10 +9,14 @@ import { MovingTargetStatCard } from './ui/MovingTargetStatCard'
 import { formatTime } from './utils/format'
 import { buildMovingTargetResultPayload } from './utils/resultPayload'
 
+// หน้าจอหลักของเกม Moving Target
+// รวมสถิติ แสดงสนามเล่น และส่งผลลัพธ์เมื่อจบเกม
 function MovingTargetGamePage() {
   const navigate = useNavigate()
   const areaRef = useRef<HTMLDivElement | null>(null)
   const hasPreparedResultRef = useRef(false)
+
+  // ref เพื่อป้องกันการ dispatch event ผลลัพธ์ซ้ำหลายครั้ง
 
   const {
     gameState,

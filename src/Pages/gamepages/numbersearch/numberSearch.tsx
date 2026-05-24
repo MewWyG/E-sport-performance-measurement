@@ -10,6 +10,8 @@ import { NumberSearchStatCard } from './ui/NumberSearchStatCard'
 import { formatTime } from './utils/format'
 import { buildNumberSearchResultPayload } from './utils/resultPayload'
 
+// หน้าเกมหลักของ Number Search
+// แสดงสถิติ เลเวล และสนามเล่น พร้อมควบคุมการเริ่ม/หยุดเกม
 function NumberSearchGamePage() {
   const navigate = useNavigate()
   const areaRef = useRef<HTMLDivElement | null>(null)

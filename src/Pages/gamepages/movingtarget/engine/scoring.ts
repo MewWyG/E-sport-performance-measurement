@@ -1,5 +1,6 @@
 import { PERCENT_SCALE } from '../config'
 
+// คำนวณความแม่นยำเป็นเปอร์เซ็นต์ โดยใช้จำนวน hits เทียบกับ attempts ทั้งหมด
 export function calculateAccuracy(
   hits: number,
   misses: number,
@@ -14,6 +15,7 @@ export function calculateAccuracy(
   return Math.round((hits / totalAttempts) * PERCENT_SCALE)
 }
 
+// คำนวณเวลาเฉลี่ยต่อการยิงโดนหนึ่งครั้ง
 export function calculateAverageResponseTime(
   totalResponseTime: number,
   hits: number,

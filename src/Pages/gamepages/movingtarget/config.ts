@@ -1,5 +1,9 @@
 import type { GameMode } from './types'
 
+// ค่าคงที่สำหรับเกม Moving Target
+// - TOTAL_TARGETS: จำนวนเป้าหมายจริงทั้งหมดที่ผู้เล่นต้องยิงให้ครบ
+// - TARGETS_PER_STAGE: จำนวนเป้าในแต่ละกลุ่มย่อย (stage)
+// - TOTAL_STAGES: จำนวนกลุ่มย่อยทั้งหมด
 export const TOTAL_TARGETS = 50
 export const TARGETS_PER_STAGE = 10
 export const TOTAL_STAGES = TOTAL_TARGETS / TARGETS_PER_STAGE

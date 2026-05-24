@@ -26,6 +26,8 @@ type CreateTargetsParams = {
   distancePlan: TargetDistancePlan
 }
 
+// สร้างชุด targets สำหรับการ spawn แต่ละครั้ง
+// โดยจะมีทั้ง target จริงและเป้าหลอกตามโหมด
 export function createTargets({
   difficulty,
   bounds,

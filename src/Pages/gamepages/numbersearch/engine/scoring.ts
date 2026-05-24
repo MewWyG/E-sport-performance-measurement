@@ -1,5 +1,6 @@
 import { NUMBER_SEARCH_SCORE_CONFIG } from '../config'
 
+// คำนวณเวลาเฉลี่ยในการค้นหาต่อการคลิกถูกหนึ่งครั้ง
 export function calculateAverageFindTime(
   totalFindTime: number,
   correctClicks: number,

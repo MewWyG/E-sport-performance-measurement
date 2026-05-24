@@ -3,6 +3,7 @@ import type { MovingTargetStats } from '../types'
 import { formatTime } from '../utils/format'
 import { TOTAL_TARGETS } from '../config'
 
+// หน้าจอแสดงผลลัพธ์หลังเล่นเกมเสร็จ
 type MovingTargetResultStateProps = {
   stats: MovingTargetStats
   onRetry: () => void

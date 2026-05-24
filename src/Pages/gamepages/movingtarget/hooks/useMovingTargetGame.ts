@@ -37,6 +37,8 @@ type UseMovingTargetGameParams = {
   areaRef: RefObject<HTMLDivElement | null>
 }
 
+// hook หลักของเกม Moving Target
+// ควบคุมสถานะเกม การ spawn targets การบันทึก stat และการจัดการ input
 export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
   const animationRef = useRef<number | null>(null)
 
@@ -85,6 +87,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     gameStateRef.current = gameState
   }, [gameState])
 
+  // อัปเดตตำแหน่งเป้าในทุกเฟรมเมื่อเกมกำลังเล่นอยู่
   useEffect(() => {
     if (gameState !== 'running') {
       return
@@ -170,6 +173,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setSelectedModeState(mode)
   }
 
+  // คืนขนาดของสนามเล่นตาม DOM element หรือค่า default เมื่อยังไม่สามารถวัดได้
   function getPlayAreaBounds(): Bounds {
     const rect = areaRef.current?.getBoundingClientRect()
 

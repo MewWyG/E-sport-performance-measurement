@@ -24,6 +24,8 @@ type MovingTargetPlayAreaProps = {
   onBack: () => void
 }
 
+// ส่วนแสดงสนามเล่นของ Moving Target
+// จัดการทั้งสถานะ ready/running/finished และรับ event จากผู้เล่น
 export function MovingTargetPlayArea({
   areaRef,
   gameState,

@@ -6,6 +6,7 @@ import {
 } from '../config'
 import type { Difficulty, GameMode } from '../types'
 
+// แปลงโหมดเป็น difficulty object ที่ใช้สร้าง targets
 export function getDifficulty(
   _spawnedCount: number,
   mode: GameMode,

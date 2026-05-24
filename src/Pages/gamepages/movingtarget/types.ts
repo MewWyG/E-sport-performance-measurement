@@ -1,5 +1,7 @@
+// สถานะของเกม Moving Target
 export type GameState = 'ready' | 'running' | 'finished'
 
+// โหมดความยากของเกม
 export type GameMode = 'easy' | 'normal' | 'hard'
 
 export type MovementPattern = 'controlled'

@@ -14,6 +14,7 @@ import {
   isCircleOverlappingRect,
 } from './playAreaObstacles'
 
+// ทิศทางที่ใช้หา candidate จุดเกิดใหม่สำหรับเป้า
 type Direction = {
   dx: number
   dy: number
@@ -55,6 +56,7 @@ const DIRECTIONS: Direction[] = [
   normalizeDirection({ dx: 1, dy: 1, label: 'down-right' }),
 ]
 
+// สร้างตำแหน่งเกิดของเป้าใหม่ โดยพยายามใกล้เคียง plannedDistance
 export function createSpawnPoint({
   previousPoint,
   bounds,
@@ -94,6 +96,7 @@ export function createSpawnPoint({
   }
 }
 
+// สร้างตำแหน่งจุดเกิดของเป้าหลอก ให้ห่างจากเป้าจริงในระยะที่กำหนด
 export function createDecoyPoint({
   correctPoint,
   bounds,

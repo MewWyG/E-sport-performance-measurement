@@ -10,6 +10,7 @@ import {
 } from './playAreaObstacles'
 import { separateOverlappingTargets } from './targetSeparation'
 
+// คำนวณตำแหน่งของทุกเป้าในแต่ละเฟรม และจัดการการชนกับปุ่มหยุดเกม
 export function updateTargets(
   targets: MovingTarget[],
   deltaMs: number,
