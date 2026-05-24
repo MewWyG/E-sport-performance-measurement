@@ -4,6 +4,17 @@ export const BASE_NUMBER_POOL = 5
 export const NUMBER_POOL_STEP = 5
 export const BASE_PLAY_COUNT = 4
 
+export const NUMBER_SEARCH_GAME_ID = 'number-search'
+export const NUMBER_SEARCH_GAME_MODE = 'standard'
+export const NUMBER_SEARCH_RESULT_SCHEMA_VERSION = 1
+
+export const NUMBER_SEARCH_TIMER_INTERVAL_MS = 100
+export const NUMBER_SEARCH_RESULT_DECIMAL_PLACES = 2
+
+export const PERCENT_SCALE = 100
+export const MILLISECONDS_PER_SECOND = 1000
+export const SECONDS_PER_MINUTE = 60
+
 export const TILE_SIZE = 56
 
 export const BOARD_MIN_WIDTH = 320
@@ -83,6 +94,7 @@ export const NUMBER_SEARCH_SCORE_CONFIG = {
   enableTimeBonus: false,
 
   targetAverageFindTimeMs: 800,
+  timeBonusStepMs: 100,
   timeBonusPer100MsFaster: 50,
   maxTimeBonus: 2000,
 

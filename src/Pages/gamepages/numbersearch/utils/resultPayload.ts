@@ -1,3 +1,9 @@
+import {
+  NUMBER_SEARCH_GAME_ID,
+  NUMBER_SEARCH_GAME_MODE,
+  NUMBER_SEARCH_RESULT_SCHEMA_VERSION,
+  PERCENT_SCALE,
+} from '../config'
 import type { GameResultPayload } from '../../../../types/gameResult'
 import type { NumberSearchStats } from '../types'
 
@@ -20,7 +26,7 @@ export function buildNumberSearchResultPayload({
   return {
     session_id: sessionId,
     player_id: playerId,
-    game_id: 'number-search',
+    game_id: NUMBER_SEARCH_GAME_ID,
 
     score: stats.score,
 
@@ -29,9 +35,9 @@ export function buildNumberSearchResultPayload({
     duration_ms: Math.round(stats.elapsedMs),
 
     raw_data_json: {
-      schemaVersion: 1,
+      schemaVersion: NUMBER_SEARCH_RESULT_SCHEMA_VERSION,
 
-      gameMode: 'standard',
+      gameMode: NUMBER_SEARCH_GAME_MODE,
 
       summary: {
         levelReached: stats.levelReached,
@@ -59,5 +65,5 @@ function calculateClickAccuracy(correctClicks: number, wrongClicks: number) {
     return 0
   }
 
-  return Math.round((correctClicks / totalClicks) * 100)
+  return Math.round((correctClicks / totalClicks) * PERCENT_SCALE)
 }

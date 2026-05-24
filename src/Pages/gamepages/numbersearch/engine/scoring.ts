@@ -51,7 +51,9 @@ function calculateTimeBonus(averageFindTime: number) {
     return 0
   }
 
-  const bonusSteps = Math.floor(fasterByMs / 100)
+  const bonusSteps = Math.floor(
+    fasterByMs / NUMBER_SEARCH_SCORE_CONFIG.timeBonusStepMs,
+  )
 
   const bonus =
     bonusSteps * NUMBER_SEARCH_SCORE_CONFIG.timeBonusPer100MsFaster

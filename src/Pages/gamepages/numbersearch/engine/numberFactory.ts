@@ -40,17 +40,3 @@ function createNumberBuckets(numberPoolMax: number, bucketCount: number) {
 
   return buckets
 }
-
-export function shuffleArray<T>(items: T[]) {
-  const result = [...items]
-
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const randomIndex = Math.floor(Math.random() * (i + 1))
-    const temp = result[i]
-
-    result[i] = result[randomIndex]
-    result[randomIndex] = temp
-  }
-
-  return result
-}
