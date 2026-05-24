@@ -1,3 +1,5 @@
+// สร้างชุดตัวเลขสำหรับทุกเลเวล
+// เลือกตัวเลขจากช่วง 1..numberPoolMax ให้ครบ playCount แบบกระจาย
 export function createNumberSet(numberPoolMax: number, playCount: number) {
   const safeNumberPoolMax = Math.max(Math.floor(numberPoolMax), 1)
   const safePlayCount = Math.min(

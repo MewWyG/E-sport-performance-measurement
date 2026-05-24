@@ -1,6 +1,7 @@
 import { TargetIcon } from '../../../../components/icons/AppIcons'
 import type { MovingTarget } from '../types'
 
+// ปุ่มเป้าหมายในสนามเล่น จะแสดงต่างกันระหว่างเป้าจริงและเป้าหลอก
 type MovingTargetTargetProps = {
   target: MovingTarget
   onClick: (target: MovingTarget) => void

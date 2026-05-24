@@ -14,6 +14,8 @@ export type DistanceSchedule = {
   plans: TargetDistancePlan[]
 }
 
+// สร้างตารางระยะสำหรับเป้าแต่ละตัวในเกม
+// ตารางนี้กำหนดทั้ง movementStepDistance และ spawnDistance
 export function createDistanceSchedule(mode: GameMode): DistanceSchedule {
   const modeConfig = GAME_MODE_CONFIG[mode]
   const plans: TargetDistancePlan[] = []

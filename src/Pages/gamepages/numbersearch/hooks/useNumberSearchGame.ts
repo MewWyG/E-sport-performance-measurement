@@ -29,6 +29,8 @@ type UseNumberSearchGameParams = {
   areaRef: RefObject<HTMLDivElement | null>
 }
 
+// hook หลักของเกม Number Search
+// รับผิดชอบการจัดการสถานะเกม การสร้างเลเวล และบันทึกสถิติทั้งหมด
 export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
   const intervalRef = useRef<number | null>(null)
 

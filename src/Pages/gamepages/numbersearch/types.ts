@@ -1,5 +1,7 @@
+// สถานะเกมของ Number Search
 export type GameState = 'ready' | 'running' | 'finished'
 
+// ข้อมูลตัวเลขบนกระดานที่ใช้ในการแสดงผลและจัดการการคลิก
 export type NumberTileData = {
   id: string
   value: number

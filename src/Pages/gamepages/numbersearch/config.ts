@@ -1,3 +1,5 @@
+// ค่าคงที่และการตั้งค่าหลักของเกม Number Search
+// ค่าเหล่านี้ควบคุมจำนวนเลเวล จำนวนตัวเลข และขนาดกระดาน
 export const MAX_NUMBER_SEARCH_LEVEL = 10
 
 export const BASE_NUMBER_POOL = 5

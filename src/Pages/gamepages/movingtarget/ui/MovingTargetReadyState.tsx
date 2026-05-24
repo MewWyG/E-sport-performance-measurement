@@ -3,6 +3,7 @@ import { TargetIcon } from '../../../../components/icons/AppIcons'
 import { GAME_MODE_CONFIG, TOTAL_TARGETS } from '../config'
 import type { GameMode } from '../types'
 
+// หน้าจอเริ่มเกมให้เลือกโหมด และปุ่มเริ่มเล่น
 type MovingTargetReadyStateProps = {
   selectedMode: GameMode
   onModeChange: (mode: GameMode) => void

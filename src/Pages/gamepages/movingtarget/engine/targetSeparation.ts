@@ -12,6 +12,7 @@ import {
   resolveCircleRectCollision,
 } from './playAreaObstacles'
 
+// แก้ปัญหาเป้าหมายซ้อนกันโดยแยกเป้าให้พ้นระยะกัน
 export function separateOverlappingTargets(
   targets: MovingTarget[],
   bounds: Bounds,

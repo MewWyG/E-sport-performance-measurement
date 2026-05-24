@@ -16,6 +16,8 @@ export type NumberSearchBoardBounds = {
   height: number
 }
 
+// สร้างตำแหน่งและข้อมูลของตัวเลขบนกระดาน
+// โดยพิจารณาจากการตั้งค่าของแต่ละเลเวล และชนิดการจัดตำแหน่ง
 export function createNumberTiles(
   numbers: number[],
   level: number,
