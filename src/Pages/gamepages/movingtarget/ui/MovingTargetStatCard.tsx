@@ -3,6 +3,7 @@ type MovingTargetStatCardProps = {
   value: string
 }
 
+// แสดงสถิติแต่ละค่าของเกมในรูปแบบการ์ด
 export function MovingTargetStatCard({
   label,
   value,

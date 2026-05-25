@@ -31,6 +31,7 @@ export function updateTargets(
   return separateOverlappingTargets(movedTargets, bounds)
 }
 
+// เคลื่อนที่เป้าจนหมดระยะที่ตั้งไว้ พร้อมจัดการการชนกับขอบและพื้นที่ปุ่มหยุด
 function moveTargetUntilDistanceComplete(
   target: MovingTarget,
   deltaMs: number,
@@ -158,6 +159,7 @@ type ResolveBoundaryCollisionParams = {
   bounds: Bounds
 }
 
+// ตรวจสอบการชนขอบสนามและสะท้อนทิศทางเป้าเมื่อชนขอบ
 function resolveBoundaryCollision({
   x,
   y,
@@ -199,6 +201,7 @@ function resolveBoundaryCollision({
   }
 }
 
+// บังคับค่าให้อยู่ในช่วง min ถึง max เพื่อไม่ให้ตำแหน่งออกนอกขอบ
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }

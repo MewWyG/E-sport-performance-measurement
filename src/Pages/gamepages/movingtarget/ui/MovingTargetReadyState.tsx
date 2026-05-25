@@ -83,6 +83,7 @@ export function MovingTargetReadyState({
   )
 }
 
+// คืนคำอธิบายสั้นๆ ของแต่ละโหมดเกม
 function getModeDescription(mode: GameMode) {
   if (mode === 'easy') {
     return 'เป้าใหญ่กว่า เคลื่อนที่ช้ากว่า และมีเวลาให้ตอบสนองมากขึ้น'

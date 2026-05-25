@@ -92,6 +92,7 @@ type ResultBoxProps = {
   value: string
 }
 
+// กล่องข้อมูลสรุปผลลัพธ์แต่ละแถว
 function ResultBox({ label, value }: ResultBoxProps) {
   return (
     <div className="rounded-sp-xl border border-sp-border bg-sp-surface/60 p-5">

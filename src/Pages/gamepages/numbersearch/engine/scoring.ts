@@ -12,6 +12,7 @@ export function calculateAverageFindTime(
   return Math.round(totalFindTime / correctClicks)
 }
 
+// คำนวณคะแนนรวมของเกมจากการคลิกถูก เลเวลที่จบ และเวลาตอบสนอง
 export function calculateScore({
   correctClicks,
   completedLevels,
@@ -36,6 +37,7 @@ export function calculateScore({
   )
 }
 
+// คำนวณโบนัสคะแนนตามเวลาเฉลี่ยที่เร็วกว่าค่าตั้งเป้า
 function calculateTimeBonus(averageFindTime: number) {
   if (!NUMBER_SEARCH_SCORE_CONFIG.enableTimeBonus) {
     return 0

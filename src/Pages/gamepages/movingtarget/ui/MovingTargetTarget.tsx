@@ -36,6 +36,7 @@ export function MovingTargetTarget({
   )
 }
 
+// เฟืองเครื่องหมาย X สำหรับแสดงเป้าหลอก
 function DecoyXMark() {
   return (
     <span className="relative block h-3/5 w-3/5" aria-hidden="true">
