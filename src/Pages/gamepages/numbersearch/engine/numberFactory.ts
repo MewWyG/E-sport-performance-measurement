@@ -18,6 +18,7 @@ export function createNumberSet(numberPoolMax: number, playCount: number) {
   return selectedNumbers.sort((a, b) => a - b)
 }
 
+// แบ่งช่วงตัวเลขออกเป็น bucket เพื่อสุ่มเลขที่กระจายตัว
 function createNumberBuckets(numberPoolMax: number, bucketCount: number) {
   const buckets: number[][] = []
 

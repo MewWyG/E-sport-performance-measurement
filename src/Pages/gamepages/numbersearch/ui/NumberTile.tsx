@@ -6,6 +6,7 @@ type NumberTileProps = {
   onClick: (value: number) => void
 }
 
+// ปุ่มตัวเลขหนึ่งตัวบนกระดาน ถ้า cleared จะไม่แสดง
 export function NumberTile({ tile, onClick }: NumberTileProps) {
   if (tile.isCleared) {
     return null

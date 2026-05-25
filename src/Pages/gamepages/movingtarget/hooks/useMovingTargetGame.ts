@@ -164,6 +164,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     }
   }, [gameState])
 
+  // เปลี่ยนโหมดเกมเมื่อเกมยังไม่ได้เริ่มเล่น
   function setSelectedMode(mode: GameMode) {
     if (gameStateRef.current === 'running') {
       return
@@ -186,12 +187,14 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     }
   }
 
+  // คืนเวลาเล่นเกมตั้งแต่เริ่มต้นจนถึงตอนนี้
   function getGameTime(now = performance.now()) {
     return startTimeRef.current === null
       ? 0
       : Math.round(now - startTimeRef.current)
   }
 
+  // รีเซ็ต stat และ state ทั้งหมดเพื่อเตรียมเริ่มเกมใหม่
   function resetStats(mode = selectedModeRef.current) {
     hitsRef.current = 0
     missesRef.current = 0
@@ -219,6 +222,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setInputEvents([])
   }
 
+  // เริ่มเกม โดยรีเซ็ตสถิติและ spawn target แรก
   function startGame() {
     const mode = selectedModeRef.current
 
@@ -233,10 +237,12 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     spawnTargets(now)
   }
 
+  // หยุดเกมและเปลี่ยนสถานะเป็น finished
   function stopGame() {
     finishGame()
   }
 
+  // จบเกมทันที และเคลียร์เป้าออกจากสนาม
   function finishGame(now = performance.now()) {
     gameStateRef.current = 'finished'
     targetsRef.current = []
@@ -252,6 +258,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setGameState('finished')
   }
 
+  // สร้าง targets ใหม่ตามระยะทางและโหมดเกม
   function spawnTargets(now: number) {
     if (spawnIndexRef.current >= TOTAL_TARGETS) {
       finishGame(now)
@@ -291,6 +298,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setTargets(nextTargets)
   }
 
+  // เพิ่มจำนวน miss เมื่อผู้เล่นคลิกผิดหรือเป้าหมดเวลา
   function addMiss() {
     const nextMisses = missesRef.current + 1
 
@@ -298,6 +306,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setMisses(nextMisses)
   }
 
+  // เพิ่มจำนวน wrong click เมื่อผู้เล่นกดเป้าหลอก
   function addWrongClick() {
     const nextWrongClicks = wrongClicksRef.current + 1
 
@@ -305,6 +314,7 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setWrongClicks(nextWrongClicks)
   }
 
+  // บันทึกเหตุการณ์เป้าหมายเมื่อถูกยิงหรือพลาด
   function recordTargetEvent({
     target,
     now,
@@ -358,11 +368,13 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     setTargetEvents(targetEventsRef.current)
   }
 
+  // บันทึกเหตุการณ์ input เมื่อผู้เล่นคลิกพื้นที่ว่าง
   function recordInputEvent(event: MovingTargetInputEvent) {
     inputEventsRef.current = [...inputEventsRef.current, event]
     setInputEvents(inputEventsRef.current)
   }
 
+  // จัดการคลิกในสนามเล่นเมื่อผู้เล่นไม่โดนเป้า
   function handleAreaClick() {
     if (gameStateRef.current !== 'running') {
       return
@@ -380,10 +392,11 @@ export function useMovingTargetGame({ areaRef }: UseMovingTargetGameParams) {
     })
   }
 
+  // จัดการคลิกที่เป้าหมาย วิเคราะห์ว่าเป็นเป้าจริงหรือเป้าหลอก
   function handleTargetClick(target: MovingTarget) {
-  if (gameStateRef.current !== 'running') {
-    return
-  }
+    if (gameStateRef.current !== 'running') {
+      return
+    }
 
   const now = performance.now()
   const activeTarget = targetsRef.current.find((item) => item.id === target.id)

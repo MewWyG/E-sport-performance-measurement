@@ -63,6 +63,7 @@ type DirectionCandidate = {
 
 type TurnConstraintMode = 'strict' | 'relaxed' | 'disabled'
 
+// สร้างตำแหน่งตัวเลขแบบ path-controlled เพื่อให้ตัวเลขเรียงตามระยะทาง
 function createControlledPathPositions(
   numbers: number[],
   level: number,
@@ -134,6 +135,7 @@ type TryCreateRelaxedControlledPathPositionsParams = {
   bounds: NumberSearchBoardBounds
 }
 
+// ลองสร้างตำแหน่ง path-controlled โดยผ่อนคลายข้อจำกัดมุมเลี้ยว
 function tryCreateRelaxedControlledPathPositions({
   numbers,
   level,
@@ -170,6 +172,7 @@ type TryCreateControlledPathLayoutParams = {
   turnConstraintMode: TurnConstraintMode
 }
 
+// สร้าง layout path-controlled โดยวางแต่ละตำแหน่งตามระยะที่กำหนด
 function tryCreateControlledPathLayout({
   numbers,
   level,
@@ -237,6 +240,7 @@ type CreateNextPathStepParams = {
   turnConstraintMode: TurnConstraintMode
 }
 
+// สร้างตำแหน่งถัดไปบน path โดยพยายามใช้ทิศทางที่เหมาะสม
 function createNextPathStep({
   previousPosition,
   previousAngle,
@@ -271,6 +275,7 @@ function createNextPathStep({
   })
 }
 
+// ลองเลือกทิศทางโดยแบ่ง sector รอบตำแหน่งก่อนหน้า
 function tryCreateSectorDirectionStep({
   previousPosition,
   previousAngle,
@@ -296,6 +301,7 @@ function tryCreateSectorDirectionStep({
   })
 }
 
+// ลองเลือกทิศทางโดยสวิงมุมรอบตำแหน่งก่อนหน้า
 function tryCreateSweptDirectionStep({
   previousPosition,
   previousAngle,
@@ -328,6 +334,7 @@ type CreateAvailableDirectionCandidatesParams = {
   directionCount: number
 }
 
+// สร้างชุดทิศทางที่เป็นไปได้สำหรับการวางตำแหน่งถัดไป
 function createAvailableDirectionCandidates({
   previousPosition,
   bounds,
@@ -370,6 +377,7 @@ type ChooseValidCandidateParams = {
   turnConstraintMode: TurnConstraintMode
 }
 
+// เลือก candidate ที่ผ่านข้อจำกัดมุมและระยะห่างจาก tile ก่อนหน้า
 function chooseValidCandidate({
   candidates,
   previousAngle,
@@ -404,6 +412,7 @@ function chooseValidCandidate({
   return null
 }
 
+// ตรวจสอบมุมเลี้ยวถัดไปว่าเป็นไปตามข้อจำกัดของโหมดหรือไม่
 function isValidTurnAngle({
   previousAngle,
   nextAngle,
@@ -432,6 +441,7 @@ function isValidTurnAngle({
   )
 }
 
+// คำนวณความต่างมุมระหว่างสองทิศทางในหน่วยองศา
 function getAngleDifferenceDeg(angleA: number, angleB: number) {
   const fullCircle = Math.PI * 2
   const diff = Math.abs(angleA - angleB) % fullCircle
@@ -440,6 +450,7 @@ function getAngleDifferenceDeg(angleA: number, angleB: number) {
   return (shortestDiff * 180) / Math.PI
 }
 
+// คืนค่าระยะทางสำหรับแต่ละค่าที่จะวางในเลเวลนั้น
 function getLevelPathDistances({
   level,
   count,
@@ -473,6 +484,7 @@ function getLevelPathDistances({
   return distances
 }
 
+// สร้างตำแหน่งแบบกระจายสำหรับการวางตัวเลขโดยไม่ใช้ path
 function createScatteredPositionMap(
   numbers: number[],
   bounds: NumberSearchBoardBounds,
@@ -487,6 +499,7 @@ function createScatteredPositionMap(
   return positionsByValue
 }
 
+// สร้างชุดตำแหน่งแบบกระจายสำหรับจำนวน tile ที่กำหนด
 function createScatteredPositions(
   count: number,
   bounds: NumberSearchBoardBounds,
@@ -502,6 +515,7 @@ function createScatteredPositions(
   return positions
 }
 
+// หาตำแหน่งแบบสุ่มที่ยังไม่ชิดกับตำแหน่งอื่นเกินไป
 function createValidScatteredPosition(
   existingPositions: PlacementPosition[],
   bounds: NumberSearchBoardBounds,
@@ -528,6 +542,7 @@ function createValidScatteredPosition(
   return createRandomPosition(bounds)
 }
 
+// สร้างตำแหน่งแบบสุ่มภายในขอบเขตปลอดภัย
 function createRandomPosition(
   bounds: NumberSearchBoardBounds,
 ): PlacementPosition {
@@ -543,6 +558,7 @@ function createRandomPosition(
   })
 }
 
+// สร้างตำแหน่งกลางกระดาน
 function createCenterPosition(
   bounds: NumberSearchBoardBounds,
 ): PlacementPosition {
@@ -553,6 +569,7 @@ function createCenterPosition(
   })
 }
 
+// แปลงตำแหน่งพิกเซลเป็นค่าเปอร์เซ็นต์สำหรับการแสดงผล
 function createPositionFromPx({
   xPx,
   yPx,
@@ -577,6 +594,7 @@ type SafePlacementBounds = {
   maxY: number
 }
 
+// สร้างขอบเขตปลอดภัยสำหรับวาง tile โดยไม่ให้ชนขอบหน้าจอ
 function createSafePlacementBounds(
   bounds: NumberSearchBoardBounds,
 ): SafePlacementBounds {
@@ -596,6 +614,7 @@ function createSafePlacementBounds(
   }
 }
 
+// ตรวจสอบว่าตำแหน่งอยู่ภายในขอบเขตปลอดภัยหรือไม่
 function isInsideSafeBoundsWithSafeBounds(
   position: PlacementPosition,
   safeBounds: SafePlacementBounds,
@@ -608,6 +627,7 @@ function isInsideSafeBoundsWithSafeBounds(
   )
 }
 
+// ตรวจสอบว่าตำแหน่ง candidate ห่างจาก tile อื่นพอหรือไม่
 function isFarEnoughFromAll(
   candidate: PlacementPosition,
   existingPositions: PlacementPosition[],
@@ -618,6 +638,7 @@ function isFarEnoughFromAll(
   })
 }
 
+// คำนวณระยะทางระหว่างตำแหน่งสองตำแหน่งในหน่วยพิกเซล
 function getDistancePx(a: PlacementPosition, b: PlacementPosition) {
   const dx = a.xPx - b.xPx
   const dy = a.yPx - b.yPx
@@ -625,6 +646,7 @@ function getDistancePx(a: PlacementPosition, b: PlacementPosition) {
   return Math.hypot(dx, dy)
 }
 
+// สุ่มค่าทศนิยมระหว่าง min และ max
 function randomBetween(min: number, max: number) {
   if (max <= min) {
     return min
@@ -633,6 +655,7 @@ function randomBetween(min: number, max: number) {
   return Math.random() * (max - min) + min
 }
 
+// สุ่มเรียงลำดับ array โดยใช้ Fisher-Yates algorithm
 function shuffleArray<T>(items: T[]) {
   const result = [...items]
 
@@ -648,6 +671,7 @@ function shuffleArray<T>(items: T[]) {
   return result
 }
 
+// แสดงข้อมูล debug ของการจัดวาง path เพื่อช่วยวิเคราะห์การวางตำแหน่ง
 function debugPathDistances({
   numbers,
   positions,

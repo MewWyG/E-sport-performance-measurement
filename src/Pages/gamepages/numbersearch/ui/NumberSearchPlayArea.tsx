@@ -17,6 +17,8 @@ type NumberSearchPlayAreaProps = {
   onBack: () => void
 }
 
+// ส่วนแสดงสนามเล่น Number Search
+// เปลี่ยนหน้า UI ตามสถานะ ready, running, finished
 export function NumberSearchPlayArea({
   areaRef,
   gameState,

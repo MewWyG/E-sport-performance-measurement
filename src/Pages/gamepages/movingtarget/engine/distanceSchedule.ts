@@ -81,6 +81,7 @@ type CreateStageDistanceValuesParams = {
   multiplier: number
 }
 
+// สร้างชุดค่าระยะสำหรับ stage ใด stage หนึ่ง โดยเพิ่มทีละ step
 function createStageDistanceValues({
   stageIndex,
   startValue,
@@ -132,6 +133,7 @@ function createInterleavedMiniBatchShuffleBag(values: number[]) {
   return result
 }
 
+// สุ่มตำแหน่งของ array โดยใช้ Fisher-Yates shuffle
 function shuffleArray<T>(items: T[]) {
   const result = [...items]
 

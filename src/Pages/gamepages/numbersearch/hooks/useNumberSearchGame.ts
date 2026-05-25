@@ -101,12 +101,14 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     }
   }, [gameState])
 
+  // คืนเวลาเล่นเกมตั้งแต่เริ่มต้นจนถึงตอนนี้
   function getGameTime(now = performance.now()) {
     return startTimeRef.current === null
       ? 0
       : Math.round(now - startTimeRef.current)
   }
 
+  // คืนขนาดกระดานตาม DOM element หรือค่า default เมื่อยังวัดไม่ได้
   function getBoardBounds() {
     const rect = areaRef.current?.getBoundingClientRect()
 
@@ -119,10 +121,12 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     }
   }
 
+  // หา tile ตามค่าตัวเลขบนกระดาน
   function getTileByValue(value: number) {
     return tilesRef.current.find((tile) => tile.value === value)
   }
 
+  // รีเซ็ตสถานะเกมและสถิติทั้งหมดให้กลับไปที่ค่าเริ่มต้น
   function resetGame() {
     gameStateRef.current = 'ready'
     levelRef.current = 1
@@ -164,6 +168,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setLevelEvents([])
   }
 
+  // เริ่มเกมใหม่ตั้งแต่เลเวลแรก
   function startGame() {
     resetGame()
 
@@ -176,10 +181,12 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     startLevel(1, now)
   }
 
+  // หยุดเกมแบบผู้เล่นกดจบเอง
   function stopGame() {
     finishGame()
   }
 
+  // จบเกมทันทีและอัปเดตเวลาเล่นสุดท้าย
   function finishGame(now = performance.now()) {
     gameStateRef.current = 'finished'
 
@@ -190,6 +197,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setGameState('finished')
   }
 
+  // เริ่มเลเวลใหม่โดยสร้าง sequence ของตัวเลขและ tile ใหม่
   function startLevel(nextLevel: number, now = performance.now()) {
     const levelConfig = getLevelConfig(nextLevel)
 
@@ -224,6 +232,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setTotalNumbersShown(totalNumbersShownRef.current)
   }
 
+  // บันทึกเหตุการณ์การคลิกตัวเลขที่ถูกต้อง
   function recordTargetEvent({
     clickedValue,
     responseTime,
@@ -276,6 +285,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setTargetEvents(targetEventsRef.current)
   }
 
+  // บันทึกเหตุการณ์เมื่อผู้เล่นคลิกตัวเลขผิด
   function recordWrongInputEvent({
     clickedValue,
     expectedValue,
@@ -318,6 +328,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setInputEvents(inputEventsRef.current)
   }
 
+  // บันทึกเหตุการณ์เมื่อผู้เล่นจบเลเวลหนึ่ง
   function recordCompletedLevelEvent(now = performance.now()) {
     const levelStartedAt = levelStartedAtRef.current ?? now
 
@@ -350,6 +361,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     setLevelEvents(levelEventsRef.current)
   }
 
+  // จัดการการคลิกแต่ละ tile โดยตรวจสอบว่าเป็นตัวเลขที่ถูกต้องหรือไม่
   function handleTileClick(value: number) {
     if (gameStateRef.current !== 'running') {
       return
@@ -454,6 +466,7 @@ export function useNumberSearchGame({ areaRef }: UseNumberSearchGameParams) {
     updateScore()
   }
 
+  // คำนวณคะแนนรวมจากการคลิกถูก เลเวลที่จบ และเวลาเฉลี่ย
   function updateScore(completedLevelsOverride = completedLevelsRef.current) {
     const currentAverageFindTime = calculateAverageFindTime(
       totalFindTimeRef.current,
